@@ -29,4 +29,11 @@ try {
     if ($_SERVER['REQUEST_METHOD']==='POST' && !hash_equals($_SESSION['csrf'],(string)($_POST['_csrf']??''))) abortPage(419,'La sesión del formulario venció. Recargá la página e intentá otra vez.');
     require ROOT.'/app/routes.php';
 } catch (InvalidArgumentException $ex) { if(wantsJson()) jsonResponse(['error'=>$ex->getMessage()],422); http_response_code(422); render('message',['title'=>'Revisá los datos','message'=>$ex->getMessage()]); }
-catch (Throwable $ex) { $ref=bin2hex(random_bytes(5)); error_log('FiloLux '.$ref.' '.$ex::class.' '.$ex->getCode()); if(wantsJson()) jsonResponse(['error'=>'No pudimos completar la operación. Referencia: '.$ref],500); http_response_code(500); render('message',['title'=>'No pudimos completar la operación','message'=>'Intentá nuevamente. Referencia: '.$ref]); }
+catch (Throwable $ex) {
+    $ref=bin2hex(random_bytes(5));
+    // Log diagnostic codes and locations without SQL values, credentials or customer data.
+    $driver=$ex instanceof PDOException && isset($ex->errorInfo[1])?' driver='.(int)$ex->errorInfo[1]:'';
+    error_log('FiloLux '.$ref.' '.$ex::class.' '.$ex->getCode().$driver.' at '.basename($ex->getFile()).':'.$ex->getLine());
+    if(wantsJson()) jsonResponse(['error'=>'No pudimos completar la operación. Referencia: '.$ref],500);
+    http_response_code(500); render('message',['title'=>'No pudimos completar la operación','message'=>'Intentá nuevamente. Referencia: '.$ref]);
+}

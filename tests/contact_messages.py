@@ -42,7 +42,13 @@ other_form=tokens(other)
 assert other.post(BASE+'/consultas',data={**values,'_csrf':other_form['_csrf']},headers=HEADERS).status_code==419
 csrf=re.search(r'name="_csrf" value="([^"]+)"',admin.get(BASE+'/login').text).group(1)
 assert admin.post(BASE+'/login',data={'_csrf':csrf,'email':'admin','password':'AdminTest2026!'},allow_redirects=False).status_code==303
+def badge_count(path='/admin'):
+    html=admin.get(BASE+path).text
+    badge=re.search(r'class="admin-message-badge"[^>]*>(\d+)</span>',html)
+    return int(badge.group(1)) if badge else 0
+assert badge_count()==count+1
 page=admin.get(BASE+'/admin/mensajes');assert page.status_code==200
+assert badge_count('/admin/mensajes')==count+1
 assert 'Cliente &lt;b&gt;de prueba&lt;/b&gt;' in page.text and '&lt;script&gt;alert(1)&lt;/script&gt;' in page.text
 assert '<script>alert(1)</script>' not in page.text
 csrf=re.search(r'name="_csrf" value="([^"]+)"',page.text).group(1)
@@ -50,10 +56,12 @@ endpoint=BASE+'/admin/mensajes/'+str(row['id'])+'/estado'
 assert admin.post(endpoint,data={'status':'respondido'},headers=HEADERS).status_code==419
 assert admin.post(endpoint,data={'_csrf':csrf,'status':'invalid'},headers=HEADERS).status_code==422
 assert admin.post(endpoint,data={'_csrf':csrf,'status':'respondido'},allow_redirects=False).status_code==303
+assert badge_count()==count
 assert 'Cliente &lt;b&gt;' in admin.get(BASE+'/admin/mensajes?estado=respondido').text
 assert 'Cliente &lt;b&gt;' not in admin.get(BASE+'/admin/mensajes?estado=pendiente').text
 assert sql('echo one("SELECT responded_at FROM contact_messages WHERE id=?",['+str(row['id'])+'])["responded_at"];').strip()
 assert admin.post(endpoint,data={'_csrf':csrf,'status':'pendiente'},allow_redirects=False).status_code==303
+assert badge_count()==count+1
 assert sql('echo one("SELECT status FROM contact_messages WHERE id=?",['+str(row['id'])+'])["status"];')=='pendiente'
 # Native HTML submission also stores a pending message and redirects.
 native=tokens(anon)
@@ -83,6 +91,7 @@ sql('query("DROP TABLE contact_messages");')
 try:
     assert other.get(BASE+'/').status_code==200
     assert 'importá la migración' in admin.get(BASE+'/admin/mensajes').text
+    assert badge_count()==0
     fresh=tokens(other)
     assert other.post(BASE+'/consultas',data={**values,**fresh},headers=HEADERS).status_code==503
 finally:

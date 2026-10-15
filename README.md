@@ -144,7 +144,7 @@ El logo aparece en cabecera y pie. Los acentos gráficos usan el mismo destello.
 
 La interfaz usa la familia `Century Gothic`, con texto regular 400 y títulos en negrita 700, tanto en la tienda como en el administrador. También se aplica a los campos, botones y textos auxiliares.
 
-Actualmente no hay archivos de esta fuente en el proyecto: el navegador utiliza Century Gothic si está instalada en el dispositivo y, en caso contrario, Arial/Helvetica/sans-serif. Para garantizar la tipografía exacta en todos los dispositivos falta incorporar los archivos web de Century Gothic Regular y Bold (preferentemente WOFF2) y declararlos con `@font-face`. El logo de FiloLux es un SVG con trazados propios.
+Las dos fuentes entregadas (`centurygothic.ttf` y `centurygothic_bold.ttf`) están convertidas a WOFF2 en `public/assets/fonts/`, con todos sus glifos. Se cargan mediante `@font-face`, con pesos 400 y 700 y `font-display: swap`, directamente desde el sitio, sin servicios externos ni necesidad de tenerlas instaladas. El deploy sincroniza estos archivos junto con los demás assets; no requiere instalar herramientas de conversión en Hostinger. El logo de FiloLux mantiene sus trazados SVG propios.
 
 ## Credenciales del administrador en archivo privado
 

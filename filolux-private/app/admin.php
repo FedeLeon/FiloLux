@@ -104,7 +104,9 @@ if(preg_match('#^/admin/mensajes/(\d+)/estado$#D',$path,$m) && $post) {
     $status=textInput('status',20);
     if(!in_array($status,['pendiente','respondido'],true)) throw new InvalidArgumentException('Estado de mensaje inválido.');
     if(!one('SELECT id FROM contact_messages WHERE id=?',[$m[1]])) abortPage(404,'Mensaje no encontrado.');
-    query("UPDATE contact_messages SET status=?,responded_at=CASE WHEN ?='respondido' THEN COALESCE(responded_at,CURRENT_TIMESTAMP) ELSE NULL END WHERE id=?",[$status,$status,$m[1]]);
+    // Choose the timestamp expression here instead of comparing bound text in SQL.
+    $respondedAt=$status==='respondido'?'COALESCE(responded_at,CURRENT_TIMESTAMP)':'NULL';
+    query('UPDATE contact_messages SET status=?,responded_at='.$respondedAt.' WHERE id=?',[$status,$m[1]]);
     flash('Estado del mensaje actualizado.'); redirect('/admin/mensajes');
 }
 if($path==='/admin/configuracion') {
