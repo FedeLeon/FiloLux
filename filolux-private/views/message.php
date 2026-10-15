@@ -1,0 +1,1 @@
+<section class="container section"><div class="empty"><span class="little-star"><span class="brand-symbol" aria-hidden="true"></span></span><h1><?= e($title) ?></h1><p><?= e($message) ?></p><div class="hero-actions"><a class="btn" href="/">Ir al inicio ↗</a><button class="btn secondary" data-back type="button">Volver</button></div></div></section>

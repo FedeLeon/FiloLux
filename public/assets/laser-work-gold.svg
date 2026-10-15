@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 660" fill="none">
+<defs>
+ <radialGradient id="bg"><stop stop-color="#443a28"/><stop offset="1" stop-color="#211d17"/></radialGradient>
+ <linearGradient id="wood" x1="110" y1="120" x2="550" y2="550" gradientUnits="userSpaceOnUse"><stop stop-color="#d9b67b"/><stop offset=".5" stop-color="#ae8148"/><stop offset="1" stop-color="#d3ac6d"/></linearGradient>
+ <linearGradient id="edge"><stop stop-color="#614022"/><stop offset=".5" stop-color="#382b1a"/><stop offset="1" stop-color="#8f6234"/></linearGradient>
+ <linearGradient id="beam" x1="250" y1="0" x2="352" y2="292" gradientUnits="userSpaceOnUse"><stop stop-color="#e6ffaf" stop-opacity="0"/><stop offset=".9" stop-color="#dfff9d" stop-opacity=".6"/><stop offset="1" stop-color="#efffcf"/></linearGradient>
+ <pattern id="grid" width="42" height="42" patternUnits="userSpaceOnUse"><path d="M42 0H0V42" stroke="#bca77b" stroke-opacity=".06"/></pattern>
+ <pattern id="grain" width="170" height="19" patternUnits="userSpaceOnUse"><path d="M0 3Q40 0 90 4T170 3M0 13Q80 7 170 13M15 18L140 17" stroke="#674321" stroke-opacity=".16" stroke-width=".6"/></pattern>
+ <filter id="shadow" x="-40%" y="-40%" width="180%" height="200%"><feGaussianBlur stdDeviation="17"/></filter>
+ <filter id="glow" x="-200%" y="-200%" width="500%" height="500%"><feGaussianBlur stdDeviation="9"/></filter>
+ <filter id="smallglow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="2"/></filter>
+ <clipPath id="hex"><path d="m340 119 174 101v202L340 523 166 422V220Z"/></clipPath>
+</defs>
+<path fill="url(#bg)" d="M0 0h680v660H0z"/><path fill="url(#grid)" d="M0 0h680v660H0z"/>
+<g stroke="#b8a073" stroke-opacity=".3" stroke-width=".7"><path d="M60 95v22M49 106h22M610 490v22M599 501h22M607 98v16M599 106h16M65 500v18M56 509h18"/><path d="M85 180v266M80 180h10M80 446h10M166 548h348M166 543v10M514 543v10"/><path d="m105 165 235-130 236 133M112 469l230 133 230-133" stroke-dasharray="3 7"/></g>
+<text x="73" y="330" transform="rotate(-90 73 330)" font-family="monospace" font-size="8" letter-spacing="2" fill="#c0b294">HECHO CON INTENCIÓN</text><text x="290" y="565" font-family="monospace" font-size="8" letter-spacing="2" fill="#c0b294">CORTE / 0.1 MM</text>
+<ellipse cx="344" cy="468" rx="195" ry="72" fill="#070a06" opacity=".8" filter="url(#shadow)"/>
+<g transform="translate(0 -3)">
+<path d="m340 139 174 101v202L340 543 166 442V240Z" fill="url(#edge)" stroke="#332b1b"/>
+<path d="m166 422 174 101v20L166 442Z" fill="#5f4025"/><path d="m340 523 174-101v20L340 543Z" fill="#906039"/>
+<path d="m340 119 174 101v202L340 523 166 422V220Z" fill="url(#wood)" stroke="#e6c48c" stroke-opacity=".6"/>
+<g clip-path="url(#hex)"><path fill="url(#grain)" d="M140 100h400v450H140z"/><path d="m180 220 148 92-148 91m320-183-148 92 148 91M340 136v172m0 18v179" stroke="#51381e" stroke-width="2" opacity=".6"/></g>
+<g stroke="#412f1b" stroke-width="9" stroke-linejoin="round">
+<path d="m340 157 141 82v164l-141 82-141-82V239Z"/>
+<path d="m340 192 111 64v129l-111 65-111-65V256Z"/>
+<path d="m340 227 81 47v94l-81 47-81-47v-94Z"/>
+<path d="m340 262 51 30v59l-51 30-51-30v-59Z"/>
+</g>
+<g stroke="#efcb8d" stroke-width="1" stroke-linejoin="round" opacity=".7">
+<path d="m340 152 146 85v169l-146 85-146-85V237Z"/>
+<path d="m340 187 116 67v134l-116 67-116-67V254Z"/>
+<path d="m340 222 86 50v99l-86 50-86-50v-99Z"/>
+<path d="m340 257 56 33v64l-56 33-56-33v-64Z"/>
+</g>
+<path d="m340 291 26 15v30l-26 15-26-15v-30Z" fill="#252b1b" stroke="#593e21" stroke-width="4"/>
+<path d="m340 157 141 82v64" stroke="#ddfc9b" stroke-width="1.5"/>
+</g>
+<path d="m426 0 55 300" stroke="url(#beam)" stroke-width="1.6"/><path d="m421 0 60 300" stroke="url(#beam)" stroke-width="10" opacity=".1"/>
+<circle cx="481" cy="300" r="14" fill="#e6ffb2" filter="url(#glow)"/><circle cx="481" cy="300" r="5" fill="#f4ffd2" filter="url(#smallglow)"/><circle cx="481" cy="300" r="2.3" fill="#fffdeb"/>
+<g stroke="#f6ffc5" stroke-width=".8" opacity=".8"><path d="m485 299 15-8m-13 13 22 4m-33-15-7-11m17 20 11 15m-14-12 1 19"/></g>
+<g stroke="#aab98d" stroke-width=".7" opacity=".6"><path d="M485 287h83v-64h47"/><circle cx="485" cy="287" r="3"/><path d="M263 389H110v42H78"/></g>
+<text x="535" y="212" font-family="monospace" font-size="8" letter-spacing="1" fill="#d8e1c0">EL PUNTO</text><text x="535" y="225" font-family="monospace" font-size="8" letter-spacing="1" fill="#d8e1c0">DE PARTIDA.</text>
+<circle cx="340" cy="322" r="235" stroke="#cfb879" stroke-opacity=".08" stroke-dasharray="2 8"/>
+</svg>

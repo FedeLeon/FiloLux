@@ -1,0 +1,20 @@
+<?php
+declare(strict_types=1);
+if(PHP_SAPI!=='cli') exit;
+$root=dirname(__DIR__).'/filolux-private'; $socket=getenv('FILOLUX_TEST_SOCKET')?:'/tmp/filolux-mysql/mysql.sock';
+$pdo=new PDO('mysql:unix_socket='.$socket.';charset=utf8mb4','root','',[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
+$pdo->exec('DROP DATABASE IF EXISTS filolux_migration_test'); $pdo->exec('CREATE DATABASE filolux_migration_test CHARACTER SET utf8mb4'); $pdo->exec('USE filolux_migration_test');
+$old=preg_replace("/dimensions VARCHAR\\(160\\) NOT NULL DEFAULT '', ?/",'',file_get_contents($root.'/database/schema.sql'));
+$pdo->exec($old);
+$pdo->exec("INSERT INTO users (id,name,email,password,role) VALUES (1,'Owner','owner@example.test','ENV_MANAGED','admin');
+INSERT INTO categories (id,name) VALUES (1,'Original');
+INSERT INTO products (id,category_id,name,description,price_cents,lead_time) VALUES (1,1,'Pieza original','Conservar',34500,'7 días');
+INSERT INTO settings (`key`,`value`) VALUES ('brand','Mi marca existente');
+INSERT INTO orders (id,user_id,checkout_key,customer_name,email,phone,delivery,address,notes,subtotal_cents,shipping_cents,total_cents,payment_mode) VALUES (1,1,REPEAT('a',64),'Cliente','client@example.test','1234567','pickup','','',34500,0,34500,'test');
+INSERT INTO order_items (order_id,product_id,name,quantity,price_cents,lead_time) VALUES (1,1,'Pieza original',1,34500,'7 días');");
+$migration=file_get_contents($root.'/database/migrations/2026-10-15-product-measurements.sql');
+$pdo->exec($migration); $pdo->exec($migration);
+$p=$pdo->query('SELECT * FROM products WHERE id=1')->fetch(PDO::FETCH_ASSOC);
+$i=$pdo->query('SELECT * FROM order_items WHERE order_id=1')->fetch(PDO::FETCH_ASSOC);
+if($p['name']!=='Pieza original' || (int)$p['price_cents']!==34500 || $p['dimensions']!=='' || $i['dimensions']!=='' || (int)$i['price_cents']!==34500 || $pdo->query("SELECT `value` FROM settings WHERE `key`='brand'")->fetchColumn()!=='Mi marca existente') throw new RuntimeException('La migración no preservó los datos');
+echo "PASS: migración sobre esquema anterior, importación repetida y conservación de productos, pedidos y configuración.\n";

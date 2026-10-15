@@ -1,0 +1,11 @@
+/filolux-private/config.php
+/filolux-private/.env
+/filolux-private/storage/*
+!/filolux-private/storage/.gitkeep
+/filolux-private/vendor/
+/public/uploads/*
+!/public/uploads/.htaccess
+!/public/uploads/.gitkeep
+/tests/.runtime/
+**/__pycache__/
+*.pyc

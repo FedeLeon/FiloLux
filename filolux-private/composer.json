@@ -1,0 +1,18 @@
+{
+    "name": "filolux/store",
+    "description": "Tienda de corte láser FiloLux",
+    "type": "project",
+    "require": {
+        "php": ">=8.2",
+        "ext-curl": "*",
+        "ext-fileinfo": "*",
+        "ext-gd": "*",
+        "ext-mbstring": "*",
+        "ext-openssl": "*",
+        "ext-pdo_mysql": "*",
+        "phpmailer/phpmailer": "^6.12"
+    },
+    "config": {
+        "sort-packages": true
+    }
+}
