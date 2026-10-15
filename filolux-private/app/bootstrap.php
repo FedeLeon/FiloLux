@@ -3,7 +3,7 @@ declare(strict_types=1);
 ini_set('display_errors','0');
 date_default_timezone_set('America/Argentina/Buenos_Aires');
 header('X-Content-Type-Options: nosniff'); header('X-Frame-Options: DENY'); header('Referrer-Policy: strict-origin-when-cross-origin');
-header("Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'");
+header("Content-Security-Policy: default-src 'self'; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'");
 header('Cache-Control: no-store');
 session_name('filolux'); session_set_cookie_params(['httponly'=>true,'secure'=>(!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS']!=='off'),'samesite'=>'Lax','path'=>'/']); session_start();
 $_SESSION['csrf']??=bin2hex(random_bytes(32));

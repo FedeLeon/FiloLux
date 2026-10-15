@@ -3,6 +3,7 @@ declare(strict_types=1);
 $post=$_SERVER['REQUEST_METHOD']==='POST';
 if(str_starts_with($path,'/carrito')) require ROOT.'/app/cart.php';
 if(str_starts_with($path,'/admin')) { requireUser(true); require ROOT.'/app/admin.php'; return; }
+if (($path==='/a-medida' && !$post) || ($path==='/consultas' && $post)) { require ROOT.'/app/inquiries.php'; return; }
 if ($path==='/logout' && $post) { unset($_SESSION['user_id'],$_SESSION['admin_stamp']); session_regenerate_id(true); redirect('/'); }
 if (in_array($path,['/login','/registro','/recuperar','/restablecer'],true)) { require ROOT.'/app/auth.php'; return; }
 if ($path==='/' || $path==='/catalogo') {

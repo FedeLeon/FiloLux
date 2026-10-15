@@ -6,14 +6,22 @@ if($path==='/admin') {
 if($path==='/admin/productos') {
     $rawCategory=is_string($_GET['categoria']??null)?$_GET['categoria']:'';
     $selectedCategory=$rawCategory==='sin_categoria'?'sin_categoria':(ctype_digit($rawCategory)?max(0,(int)$rawCategory):0);
-    $where=''; $args=[];
-    if($selectedCategory==='sin_categoria') $where=' WHERE NOT EXISTS (SELECT 1 FROM categories c WHERE '.productCategoryMembershipSql().')';
-    elseif($selectedCategory>0) { $where=' WHERE EXISTS (SELECT 1 FROM categories c WHERE c.id=? AND '.productCategoryMembershipSql().')'; $args[]=$selectedCategory; }
+    $search=is_string($_GET['q']??null)?mb_substr(trim($_GET['q']),0,100):'';
+    $conditions=[]; $args=[];
+    if($selectedCategory==='sin_categoria') $conditions[]='NOT EXISTS (SELECT 1 FROM categories c WHERE '.productCategoryMembershipSql().')';
+    elseif($selectedCategory>0) { $conditions[]='EXISTS (SELECT 1 FROM categories c WHERE c.id=? AND '.productCategoryMembershipSql().')'; $args[]=$selectedCategory; }
+    if($search!=='') {
+        $pattern='%'.str_replace(['!','%','_'],['!!','!%','!_'],$search).'%';
+        $conditions[]="(p.name LIKE ? ESCAPE '!' OR p.description LIKE ? ESCAPE '!' OR p.dimensions LIKE ? ESCAPE '!')";
+        array_push($args,$pattern,$pattern,$pattern);
+    }
+    $where=$conditions?' WHERE '.implode(' AND ',$conditions):'';
     render('admin-products',[
         'title'=>'Productos',
         'products'=>query('SELECT p.*,'.productCategoryNamesSql().' AS category,(SELECT path FROM product_images WHERE product_id=p.id ORDER BY id LIMIT 1) AS image FROM products p'.$where.' ORDER BY p.id DESC LIMIT 500',$args)->fetchAll(),
         'categories'=>query('SELECT * FROM categories ORDER BY name')->fetchAll(),
         'selectedCategory'=>$selectedCategory,
+        'search'=>$search,
     ]); return;
 }
 if(preg_match('#^/admin/productos/(nuevo|\d+)$#D',$path,$m)) {
@@ -75,6 +83,29 @@ if(preg_match('#^/admin/pedidos/(\d+)$#D',$path,$m)) {
     if($post) { $status=textInput('status',30); if(!in_array($status,orderStatuses(),true)) throw new InvalidArgumentException('Estado inválido.'); if(!in_array($status,['pendiente','cancelado'],true) && $order['payment_status']!=='approved') throw new InvalidArgumentException('Confirmá el pago antes de avanzar con la fabricación.'); if($status==='enviado' && $order['delivery']!=='shipping') throw new InvalidArgumentException('Este pedido se retira en el taller.');
         query('UPDATE orders SET status=? WHERE id=?',[$status,$order['id']]); if($status!==$order['status']) sendMail($order['email'],'Tu pedido #'.$order['id'].' está '.$status,'El estado de tu pedido ahora es: '.$status.'. Más información en '.url('/pedidos/'.$order['id'])); flash('Estado actualizado. Cancelar un pedido no reintegra el pago; los reintegros se gestionan en Mercado Pago.'); redirect('/admin/pedidos/'.$order['id']); }
     render('order',['title'=>'Pedido #'.$order['id'],'order'=>$order,'items'=>query('SELECT * FROM order_items WHERE order_id=?',[$order['id']])->fetchAll(),'admin'=>true]); return;
+}
+if($path==='/admin/mensajes') {
+    $available=hasContactMessages();
+    $filter=is_string($_GET['estado']??null)?$_GET['estado']:'';
+    if(!in_array($filter,['pendiente','respondido'],true)) $filter='';
+    $counts=['pendiente'=>0,'respondido'=>0]; $messages=[]; $page=1; $total=0;
+    if($available) {
+        foreach(query('SELECT status,COUNT(*) AS total FROM contact_messages GROUP BY status')->fetchAll() as $row) $counts[$row['status']]=(int)$row['total'];
+        $total=$filter!==''?$counts[$filter]:array_sum($counts);
+        $requestedPage=is_scalar($_GET['pagina']??null)?(int)$_GET['pagina']:1;
+        $page=min(max(1,$requestedPage),max(1,(int)ceil($total/20)));
+        $where=$filter!==''?' WHERE status=?':'';
+        $messages=query('SELECT * FROM contact_messages'.$where.' ORDER BY created_at DESC,id DESC LIMIT 20 OFFSET '.(($page-1)*20),$filter!==''?[$filter]:[])->fetchAll();
+    }
+    render('admin-messages',['title'=>'Mensajes','available'=>$available,'filter'=>$filter,'counts'=>$counts,'messages'=>$messages,'page'=>$page,'total'=>$total]); return;
+}
+if(preg_match('#^/admin/mensajes/(\d+)/estado$#D',$path,$m) && $post) {
+    if(!hasContactMessages()) abortPage(503,'Importá primero la migración de mensajes.');
+    $status=textInput('status',20);
+    if(!in_array($status,['pendiente','respondido'],true)) throw new InvalidArgumentException('Estado de mensaje inválido.');
+    if(!one('SELECT id FROM contact_messages WHERE id=?',[$m[1]])) abortPage(404,'Mensaje no encontrado.');
+    query("UPDATE contact_messages SET status=?,responded_at=CASE WHEN ?='respondido' THEN COALESCE(responded_at,CURRENT_TIMESTAMP) ELSE NULL END WHERE id=?",[$status,$status,$m[1]]);
+    flash('Estado del mensaje actualizado.'); redirect('/admin/mensajes');
 }
 if($path==='/admin/configuracion') {
     $error='';

@@ -34,6 +34,16 @@ CREATE TABLE IF NOT EXISTS payments (id VARCHAR(100) PRIMARY KEY, order_id BIGIN
 CREATE TABLE IF NOT EXISTS password_resets (email VARCHAR(190) PRIMARY KEY, token_hash CHAR(64) NOT NULL, expires_at DATETIME NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS rate_limits (bucket CHAR(64) PRIMARY KEY, attempts INT NOT NULL DEFAULT 1, expires_at BIGINT NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS contact_messages (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ name VARCHAR(120) NOT NULL, phone VARCHAR(40) NOT NULL, message TEXT NOT NULL,
+ status VARCHAR(20) NOT NULL DEFAULT 'pendiente',
+ submission_key CHAR(64) NOT NULL UNIQUE,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ responded_at DATETIME NULL,
+ INDEX message_status_date (status, created_at, id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- DATOS INICIALES: importar después de schema.sql, solo para una tienda nueva.
 -- Cambiar admin@filolux.invalid por tu correo real ANTES de importar.
 -- El acceso admin se verifica exclusivamente con el hash del archivo privado .env.

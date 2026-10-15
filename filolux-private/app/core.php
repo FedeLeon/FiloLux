@@ -17,6 +17,16 @@ function db(): PDO {
 }
 function query(string $sql, array $args=[]): PDOStatement { $s=db()->prepare($sql); $s->execute($args); return $s; }
 function one(string $sql, array $args=[]): ?array { return query($sql,$args)->fetch() ?: null; }
+function hasContactMessages(): bool {
+    static $available;
+    return $available ??= (bool)query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='contact_messages'")->fetchColumn();
+}
+function inquiryToken(): string {
+    $token=bin2hex(random_bytes(32));
+    $_SESSION['inquiry_tokens'][$token]=true;
+    $_SESSION['inquiry_tokens']=array_slice($_SESSION['inquiry_tokens'],-30,null,true);
+    return $token;
+}
 function hasProductCategories(): bool {
     static $available;
     return $available ??= (bool)query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='product_categories'")->fetchColumn();

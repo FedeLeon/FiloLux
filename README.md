@@ -86,6 +86,16 @@ Mientras falte esta migración, la tienda continúa mostrando las categorías an
 
 En las tarjetas del catálogo, los productos con varias fotos muestran flechas para recorrerlas y un contador. El clic en la imagen o el nombre sigue abriendo la ficha. Las flechas no aparecen si hay una sola foto o ninguna; sin JavaScript la portada sigue enlazando al producto.
 
+## Consultas a medida y mensajes
+
+«Contanos tu idea», «Tengo una idea», el enlace «A medida» y el botón principal de contacto abren un formulario en un modal con nombre, teléfono y mensaje. El visitante no necesita registrarse. Al enviar recibe una confirmación en el mismo modal. Sin JavaScript, los enlaces abren `/a-medida`, con el mismo formulario y validación del servidor.
+
+En **Admin → Mensajes** se ven los datos, el texto y la fecha de cada consulta. Los mensajes nuevos quedan **pendientes**; se pueden marcar como **respondidos** o volver a pendientes y filtrar por estado. La lista muestra veinte por página. El administrador contacta a la persona y actualiza el estado; guardar la consulta no requiere SMTP.
+
+Antes de desplegar esta función sobre una base existente, importá en phpMyAdmin **`filolux-private/database/migrations/2026-10-15-contact-messages.sql`**. Es repetible y crea solo la tabla de mensajes. La base local ya puede actualizarse con ese mismo SQL; no importes de nuevo los datos iniciales de una tienda en uso. Las instalaciones nuevas usan el SQL inicial actualizado. El deploy no aplica migraciones automáticamente.
+
+La recepción usa CSRF, validación de longitudes y teléfono, límite de cinco envíos nuevos por IP cada quince minutos y una clave de formulario ligada a la sesión para no duplicar reintentos. Los datos solo se consultan desde el administrador. Si falta la migración, la tienda sigue disponible y el envío informa que aún no puede recibir consultas.
+
 ## Configurar Mercado Pago
 
 1. En Mercado Pago Developers, creá una aplicación para **Checkout Pro con Preferences API**. El servidor usa `/checkout/preferences` y `/v1/payments`; no utiliza la integración Orders API.
@@ -113,9 +123,9 @@ Las categorías se muestran como botones y conservan la búsqueda y el orden ele
 
 ## Uso del administrador
 
-El menú se muestra en una columna lateral izquierda, con la sección actual resaltada. En celular se abre con el botón de menú. La lista de productos permite filtrar con botones por categoría, ver todas las categorías o solo los productos sin categoría; incluye tanto productos publicados como ocultos.
+El menú se muestra en una columna lateral izquierda, con la sección actual resaltada. En celular se abre con el botón de menú. La lista de productos muestra una miniatura de la primera foto o el isotipo de FiloLux si no hay fotos. Permite buscar por nombre, descripción o medidas y combinar la búsqueda con los botones por categoría, todas las categorías o sin categoría; incluye tanto productos publicados como ocultos. Los botones conservan la búsqueda y «Limpiar» quita los filtros.
 
-- **Productos:** hasta ocho fotos, precio, categorías, medidas opcionales, plazo y publicación. Ocultar retira el producto del catálogo y de nuevos carritos sin afectar pedidos anteriores. La primera foto conservada es la portada.
+- **Productos:** hasta ocho fotos, precio, categorías, medidas opcionales, plazo y publicación. Al seleccionar fotos nuevas se muestra una vista previa con una papelera roja para quitar cada archivo antes de guardar; podés agregar más fotos conservando las ya elegidas. Los archivos se envían recién al guardar el producto. Ocultar retira el producto del catálogo y de nuevos carritos sin afectar pedidos anteriores. La primera foto conservada es la portada.
 - **Modalidad:** compra directa con precio positivo o consulta personalizada por WhatsApp. Los personalizados no se agregan al carrito.
 - **Pedidos:** pago y fabricación son independientes. Solo se permite avanzar fabricación con pago aprobado. Retiro gratuito o envío con tarifa única. Los costos de entrega se guardan al confirmar el pedido.
 - **Configuración:** los campos secretos vacíos conservan el valor guardado; la casilla de eliminar lo borra. El logo y las fotos se validan y convierten a WebP. El acceso administrador usa `ADMIN_USERNAME` y `ADMIN_PASSWORD_HASH` de `.env`; el correo del perfil no sirve para iniciar sesión como administrador. La recuperación por correo corresponde a clientes. Las cuentas de clientes no acceden a `/admin` ni a pedidos ajenos.
@@ -129,6 +139,12 @@ El logo de FiloLux está vectorizado en SVG, con fondo transparente y letras con
 - `icon-white.svg` e `icon-black.svg`: destello de la marca como isotipo/favicón.
 
 El logo aparece en cabecera y pie. Los acentos gráficos usan el mismo destello. La paleta definitiva es grafito y dorado, en modo oscuro y claro. El botón de sol/luna alterna entre ambos modos y conserva la elección en el navegador para la tienda y el administrador. El logo se adapta al contraste y la ilustración mantiene la paleta dorada. El modo inicial es oscuro; las preferencias guardadas durante la prueba de colores se migran conservando el modo claro u oscuro, sin mantener otras paletas. Un logo personalizado subido desde configuración reemplaza el logo predeterminado en cabecera y pie.
+
+## Tipografía
+
+La interfaz usa la familia `Century Gothic`, con texto regular 400 y títulos en negrita 700, tanto en la tienda como en el administrador. También se aplica a los campos, botones y textos auxiliares.
+
+Actualmente no hay archivos de esta fuente en el proyecto: el navegador utiliza Century Gothic si está instalada en el dispositivo y, en caso contrario, Arial/Helvetica/sans-serif. Para garantizar la tipografía exacta en todos los dispositivos falta incorporar los archivos web de Century Gothic Regular y Bold (preferentemente WOFF2) y declararlos con `@font-face`. El logo de FiloLux es un SVG con trazados propios.
 
 ## Credenciales del administrador en archivo privado
 
@@ -169,6 +185,7 @@ php tests/domain.php
 php tests/measurements_migration.php
 python3 tests/product_details.py
 python3 tests/multiple_categories.py
+python3 tests/contact_messages.py
 python3 tests/cart_ajax.py
 python3 tests/admin_auth.py
 python3 tests/integration_http.py
@@ -176,6 +193,7 @@ python3 tests/admin_settings.py
 python3 tests/deploy_hostinger.py # rsync local; no se conecta a Hostinger
 # Requiere requests para Python; Playwright instalado solo en el equipo de desarrollo:
 node tests/browser.cjs
+node tests/photo_preview.cjs
 ```
 
 Playwright acepta `FILOLUX_PLAYWRIGHT` con la ruta del módulo y `FILOLUX_CHROMIUM` con la ruta del navegador. Las capturas quedan en `tests/.runtime/`. `tests/mail.py` y `tests/manual_deploy.py` verifican SMTP/recuperación con TLS local y el despliegue manual de las carpetas en una base vacía; sus instrucciones están en sus cabeceras.
