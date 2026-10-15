@@ -17,6 +17,22 @@ function db(): PDO {
 }
 function query(string $sql, array $args=[]): PDOStatement { $s=db()->prepare($sql); $s->execute($args); return $s; }
 function one(string $sql, array $args=[]): ?array { return query($sql,$args)->fetch() ?: null; }
+function hasProductCategories(): bool {
+    static $available;
+    return $available ??= (bool)query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='product_categories'")->fetchColumn();
+}
+// SQL fragments use only fixed aliases from the application's own queries.
+function productCategoryMembershipSql(): string {
+    return hasProductCategories()
+        ? '(c.id=p.category_id OR EXISTS (SELECT 1 FROM product_categories pc WHERE pc.product_id=p.id AND pc.category_id=c.id))'
+        : 'c.id=p.category_id';
+}
+function productCategoryNamesSql(): string {
+    return "(SELECT GROUP_CONCAT(c.name ORDER BY c.name SEPARATOR ', ') FROM categories c WHERE ".productCategoryMembershipSql().')';
+}
+function productCategoryIds(int $productId): array {
+    return array_map('intval',query('SELECT c.id FROM products p JOIN categories c ON '.productCategoryMembershipSql().' WHERE p.id=? ORDER BY c.id',[$productId])->fetchAll(PDO::FETCH_COLUMN));
+}
 function setting(string $key, string $default=''): string {
     if (!isset($GLOBALS['settings'])) $GLOBALS['settings']=query('SELECT `key`,`value` FROM settings')->fetchAll(PDO::FETCH_KEY_PAIR);
     return (string)($GLOBALS['settings'][$key] ?? $default);

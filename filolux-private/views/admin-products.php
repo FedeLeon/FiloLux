@@ -14,6 +14,6 @@
             <div class="empty"><h2>Tu catálogo empieza con una pieza.</h2><p>Subí las fotos, contá su historia y elegí cómo ofrecerla.</p><a class="btn" href="/admin/productos/nuevo">Crear mi primer producto ↗</a></div>
         <?php endif ?>
     <?php else: ?>
-        <div class="table-wrap"><table><thead><tr><th>Pieza</th><th>Categoría</th><th>Precio</th><th>Visibilidad</th><th></th></tr></thead><tbody><?php foreach($products as $p): ?><tr><td><strong><?= e($p['name']) ?></strong><?php if($p['featured']): ?><small>Destacado</small><?php endif ?></td><td><?= e($p['category']??'Sin categoría') ?></td><td><?= $p['mode']==='quote'?'Consultar':money($p['price_cents']) ?></td><td><span class="badge"><?= $p['active']?'Publicado':'Oculto' ?></span></td><td><a href="/admin/productos/<?= $p['id'] ?>" class="text-link">Editar ↗</a></td></tr><?php endforeach ?></tbody></table></div>
+        <div class="table-wrap"><table><thead><tr><th>Pieza</th><th>Categorías</th><th>Precio</th><th>Visibilidad</th><th></th></tr></thead><tbody><?php foreach($products as $p): ?><tr><td><strong><?= e($p['name']) ?></strong><?php if($p['featured']): ?><small>Destacado</small><?php endif ?></td><td><?= e($p['category']??'Sin categoría') ?></td><td><?= $p['mode']==='quote'?'Consultar':money($p['price_cents']) ?></td><td><span class="badge"><?= $p['active']?'Publicado':'Oculto' ?></span></td><td><a href="/admin/productos/<?= $p['id'] ?>" class="text-link">Editar ↗</a></td></tr><?php endforeach ?></tbody></table></div>
     <?php endif ?>
 </section>

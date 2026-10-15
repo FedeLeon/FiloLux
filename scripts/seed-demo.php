@@ -76,6 +76,7 @@ try {
                 $price === null ? 'Plazo a coordinar según el diseño' : '7 a 10 días hábiles',
                 $price === null ? 'quote' : 'buy', 1, $index === 0 ? 1 : 0,
             ]);
+            if(hasProductCategories()) query('INSERT INTO product_categories (product_id,category_id) VALUES (?,?)',[(int)$pdo->lastInsertId(),$categoryId]);
             $createdProducts++;
         }
     }

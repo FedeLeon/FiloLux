@@ -7,25 +7,41 @@ if($path==='/admin/productos') {
     $rawCategory=is_string($_GET['categoria']??null)?$_GET['categoria']:'';
     $selectedCategory=$rawCategory==='sin_categoria'?'sin_categoria':(ctype_digit($rawCategory)?max(0,(int)$rawCategory):0);
     $where=''; $args=[];
-    if($selectedCategory==='sin_categoria') $where=' WHERE p.category_id IS NULL';
-    elseif($selectedCategory>0) { $where=' WHERE p.category_id=?'; $args[]=$selectedCategory; }
+    if($selectedCategory==='sin_categoria') $where=' WHERE NOT EXISTS (SELECT 1 FROM categories c WHERE '.productCategoryMembershipSql().')';
+    elseif($selectedCategory>0) { $where=' WHERE EXISTS (SELECT 1 FROM categories c WHERE c.id=? AND '.productCategoryMembershipSql().')'; $args[]=$selectedCategory; }
     render('admin-products',[
         'title'=>'Productos',
-        'products'=>query('SELECT p.*,c.name AS category,(SELECT path FROM product_images WHERE product_id=p.id ORDER BY id LIMIT 1) AS image FROM products p LEFT JOIN categories c ON c.id=p.category_id'.$where.' ORDER BY p.id DESC LIMIT 500',$args)->fetchAll(),
+        'products'=>query('SELECT p.*,'.productCategoryNamesSql().' AS category,(SELECT path FROM product_images WHERE product_id=p.id ORDER BY id LIMIT 1) AS image FROM products p'.$where.' ORDER BY p.id DESC LIMIT 500',$args)->fetchAll(),
         'categories'=>query('SELECT * FROM categories ORDER BY name')->fetchAll(),
         'selectedCategory'=>$selectedCategory,
     ]); return;
 }
 if(preg_match('#^/admin/productos/(nuevo|\d+)$#D',$path,$m)) {
     $id=$m[1]==='nuevo'?0:(int)$m[1]; $product=$id?one('SELECT * FROM products WHERE id=?',[$id]):['name'=>'','description'=>'','dimensions'=>'','category_id'=>'','price_cents'=>0,'lead_time'=>'7 a 10 días hábiles','mode'=>'buy','active'=>1,'featured'=>0]; if(!$product) abortPage(404,'Producto no encontrado.');
+    $selectedCategories=$id?productCategoryIds($id):[];
     $error='';
     if($post) {
         $uploaded=[];
         try {
+            $rawCategories=$_POST['category_ids']??[];
+            // Accept older clients until their forms are refreshed after the deploy.
+            if(!isset($_POST['categories_present']) && !array_key_exists('category_ids',$_POST) && !empty($_POST['category_id'])) $rawCategories=[$_POST['category_id']];
+            if(!is_array($rawCategories) || count($rawCategories)>1000) throw new InvalidArgumentException('Categorías inválidas.');
+            $selectedCategories=[];
+            foreach($rawCategories as $value) {
+                if(!is_scalar($value) || !ctype_digit((string)$value) || (int)$value<=0) throw new InvalidArgumentException('Categoría inválida.');
+                $selectedCategories[]=(int)$value;
+            }
+            $selectedCategories=array_values(array_unique($selectedCategories)); sort($selectedCategories,SORT_NUMERIC);
+            if($selectedCategories) {
+                $placeholders=implode(',',array_fill(0,count($selectedCategories),'?'));
+                if((int)query('SELECT COUNT(*) FROM categories WHERE id IN ('.$placeholders.')',$selectedCategories)->fetchColumn()!==count($selectedCategories)) throw new InvalidArgumentException('Categoría inválida.');
+            }
+            if(count($selectedCategories)>1 && !hasProductCategories()) throw new InvalidArgumentException('Para guardar varias categorías, importá primero la migración 2026-10-15-product-categories.sql en esta base.');
+            $cat=$selectedCategories[0]??0;
             $name=textInput('name',160); $description=textInput('description',20000); $dimensions=textInput('dimensions',160,false); $lead=textInput('lead_time',160); $mode=textInput('mode',20);
             if(!in_array($mode,['buy','quote'],true)) throw new InvalidArgumentException('Modalidad inválida.');
             $price=$mode==='buy'?cents((string)($_POST['price']??'')):0; if($mode==='buy' && $price<=0) throw new InvalidArgumentException('El precio debe ser mayor a cero.');
-            $cat=(int)($_POST['category_id']??0); if($cat && !one('SELECT id FROM categories WHERE id=?',[$cat])) throw new InvalidArgumentException('Categoría inválida.');
             $existing=$id?query('SELECT * FROM product_images WHERE product_id=? ORDER BY id',[$id])->fetchAll():[];
             $delete=array_map('intval',(array)($_POST['delete_images']??[]));
             $files=$_FILES['images']??null; $count=0;
@@ -36,6 +52,10 @@ if(preg_match('#^/admin/productos/(nuevo|\d+)$#D',$path,$m)) {
             db()->beginTransaction(); $args=[$cat?:null,$name,$description,$dimensions,$price,$lead,$mode,isset($_POST['active'])?1:0,isset($_POST['featured'])?1:0];
             if($id) { $args[]=$id; query('UPDATE products SET category_id=?,name=?,description=?,dimensions=?,price_cents=?,lead_time=?,mode=?,active=?,featured=? WHERE id=?',$args); }
             else { query('INSERT INTO products (category_id,name,description,dimensions,price_cents,lead_time,mode,active,featured) VALUES (?,?,?,?,?,?,?,?,?)',$args); $id=(int)db()->lastInsertId(); }
+            if(hasProductCategories()) {
+                query('DELETE FROM product_categories WHERE product_id=?',[$id]);
+                foreach($selectedCategories as $categoryId) query('INSERT INTO product_categories (product_id,category_id) VALUES (?,?)',[$id,$categoryId]);
+            }
             foreach($uploaded as $image) query('INSERT INTO product_images (product_id,path) VALUES (?,?)',[$id,$image]);
             foreach($existing as $image) if(in_array((int)$image['id'],$delete,true)) query('DELETE FROM product_images WHERE id=? AND product_id=?',[$image['id'],$id]);
             db()->commit();
@@ -43,7 +63,7 @@ if(preg_match('#^/admin/productos/(nuevo|\d+)$#D',$path,$m)) {
             flash('Producto guardado.'); redirect('/admin/productos');
         } catch(Throwable $ex) { if(db()->inTransaction()) db()->rollBack(); foreach($uploaded as $image) @unlink(PUBLIC_ROOT.'/'.$image); if(!$ex instanceof InvalidArgumentException) throw $ex; $error=$ex->getMessage(); $product=array_merge($product,array_intersect_key($_POST,$product)); if(isset($_POST['price'])) { try { $product['price_cents']=cents($_POST['price']); } catch(Throwable) {} } $product['active']=isset($_POST['active']); $product['featured']=isset($_POST['featured']); }
     }
-    render('admin-product',['title'=>$id?'Editar producto':'Nueva pieza','product'=>$product,'categories'=>query('SELECT * FROM categories ORDER BY name')->fetchAll(),'images'=>$id?query('SELECT * FROM product_images WHERE product_id=? ORDER BY id',[$id])->fetchAll():[],'error'=>$error]); return;
+    render('admin-product',['title'=>$id?'Editar producto':'Nueva pieza','product'=>$product,'selectedCategories'=>$selectedCategories,'categories'=>query('SELECT * FROM categories ORDER BY name')->fetchAll(),'images'=>$id?query('SELECT * FROM product_images WHERE product_id=? ORDER BY id',[$id])->fetchAll():[],'error'=>$error]); return;
 }
 if($path==='/admin/categorias') {
     $error=''; if($post) { try { $id=(int)($_POST['id']??0); if(isset($_POST['delete'])) query('DELETE FROM categories WHERE id=?',[$id]); else { $name=textInput('name',100); if(one('SELECT id FROM categories WHERE name=? AND id<>?',[$name,$id])) throw new InvalidArgumentException('Ya existe esa categoría.'); if($id) query('UPDATE categories SET name=? WHERE id=?',[$name,$id]); else query('INSERT INTO categories (name) VALUES (?)',[$name]); } flash('Categorías actualizadas.'); redirect('/admin/categorias'); } catch(InvalidArgumentException $ex) { $error=$ex->getMessage(); } }

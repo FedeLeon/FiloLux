@@ -36,7 +36,7 @@ const { chromium } = require(process.env.FILOLUX_PLAYWRIGHT || 'playwright');
   if (!mobile.url().endsWith('/producto/1')) throw Error('Agregar debe conservar la ficha');
   await mobile.getByRole('link',{name:'Ver carrito ↗',exact:true}).click();
   await mobile.waitForURL('**/carrito');
-  if(!await mobile.getByRole('link',{name:'Continuar compra'}).isVisible()) throw Error('Cart flow');
+  if(!await mobile.getByRole('link',{name:'Continuar al pago con Mercado Pago'}).isVisible()) throw Error('Cart flow');
   await mobile.screenshot({path:'tests/.runtime/cart-mobile.png',fullPage:true});
   await mobile.goto('http://127.0.0.1:8087/login');
   await mobile.getByLabel('Usuario o correo electrónico').fill('admin');

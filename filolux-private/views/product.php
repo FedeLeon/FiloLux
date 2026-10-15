@@ -2,7 +2,7 @@
 
 <?php if($suggested): ?>
 <section class="container section suggested-products" aria-labelledby="suggested-heading">
-    <div class="section-heading"><div><p class="eyebrow">MÁS IDEAS PARA VOS</p><h2 id="suggested-heading">También te puede gustar.</h2><p>Más piezas de <?= e($product['category']) ?>.</p></div><a class="text-link" href="/catalogo?categoria=<?= (int)$product['category_id'] ?>">Ver la categoría ↗</a></div>
+    <div class="section-heading"><div><p class="eyebrow">MÁS IDEAS PARA VOS</p><h2 id="suggested-heading">También te puede gustar.</h2><p><?= count($product['category_ids'])>1?'Otras piezas que comparten alguna de sus categorías.':'Más piezas de '.e($product['category']).'.' ?></p></div><a class="text-link" href="/catalogo?categoria=<?= (int)$product['category_ids'][0] ?>">Ver <?= count($product['category_ids'])>1?'una categoría':'la categoría' ?> ↗</a></div>
     <div class="product-grid"><?php foreach($suggested as $p) require ROOT.'/views/product-card.php' ?></div>
 </section>
 <?php endif ?>

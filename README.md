@@ -76,6 +76,16 @@ Los archivos del carrito están en las mismas carpetas `filolux-private/` y `pub
 
 Los importes y el estado del carrito se obtienen desde el servidor y las acciones conservan la protección CSRF. Sin JavaScript, los formularios siguen funcionando y llevan a la página del carrito. Ante un problema de red, el panel ofrece abrir el carrito completo para verificar el resultado antes de reintentar.
 
+## Varias categorías por producto y fotos en tarjetas
+
+En Productos → Crear/Editar podés seleccionar varias categorías con casillas. Si no seleccionás ninguna, el producto queda sin categoría. Los filtros públicos y del administrador lo encuentran por cualquiera de sus categorías; los sugeridos pueden compartir cualquiera de ellas. Eliminar una categoría conserva las demás asignaciones.
+
+Para una base existente, importá **`filolux-private/database/migrations/2026-10-15-product-categories.sql`** en phpMyAdmin **antes del deploy**. Crea la tabla de relaciones y copia las asignaciones anteriores sin eliminar productos ni categorías; admite repetirse. No vuelvas a importar el SQL inicial. El deploy no ejecuta migraciones ni sube archivos de base de datos: seleccioná este SQL desde tu copia local. Las instalaciones nuevas ya lo incluyen en `database/filolux.sql`.
+
+Mientras falte esta migración, la tienda continúa mostrando las categorías anteriores. Intentar guardar varias categorías muestra un aviso y no modifica el producto.
+
+En las tarjetas del catálogo, los productos con varias fotos muestran flechas para recorrerlas y un contador. El clic en la imagen o el nombre sigue abriendo la ficha. Las flechas no aparecen si hay una sola foto o ninguna; sin JavaScript la portada sigue enlazando al producto.
+
 ## Configurar Mercado Pago
 
 1. En Mercado Pago Developers, creá una aplicación para **Checkout Pro con Preferences API**. El servidor usa `/checkout/preferences` y `/v1/payments`; no utiliza la integración Orders API.
@@ -105,7 +115,7 @@ Las categorías se muestran como botones y conservan la búsqueda y el orden ele
 
 El menú se muestra en una columna lateral izquierda, con la sección actual resaltada. En celular se abre con el botón de menú. La lista de productos permite filtrar con botones por categoría, ver todas las categorías o solo los productos sin categoría; incluye tanto productos publicados como ocultos.
 
-- **Productos:** hasta ocho fotos, precio, categoría, medidas opcionales, plazo y publicación. Ocultar retira el producto del catálogo y de nuevos carritos sin afectar pedidos anteriores. La primera foto conservada es la portada.
+- **Productos:** hasta ocho fotos, precio, categorías, medidas opcionales, plazo y publicación. Ocultar retira el producto del catálogo y de nuevos carritos sin afectar pedidos anteriores. La primera foto conservada es la portada.
 - **Modalidad:** compra directa con precio positivo o consulta personalizada por WhatsApp. Los personalizados no se agregan al carrito.
 - **Pedidos:** pago y fabricación son independientes. Solo se permite avanzar fabricación con pago aprobado. Retiro gratuito o envío con tarifa única. Los costos de entrega se guardan al confirmar el pedido.
 - **Configuración:** los campos secretos vacíos conservan el valor guardado; la casilla de eliminar lo borra. El logo y las fotos se validan y convierten a WebP. El acceso administrador usa `ADMIN_USERNAME` y `ADMIN_PASSWORD_HASH` de `.env`; el correo del perfil no sirve para iniciar sesión como administrador. La recuperación por correo corresponde a clientes. Las cuentas de clientes no acceden a `/admin` ni a pedidos ajenos.
@@ -158,6 +168,7 @@ FILOLUX_CONFIG_PATH="$PWD/tests/.runtime/config.php" FILOLUX_ENV_PATH="$PWD/test
 php tests/domain.php
 php tests/measurements_migration.php
 python3 tests/product_details.py
+python3 tests/multiple_categories.py
 python3 tests/cart_ajax.py
 python3 tests/admin_auth.py
 python3 tests/integration_http.py

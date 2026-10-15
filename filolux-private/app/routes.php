@@ -24,22 +24,35 @@ if ($path==='/' || $path==='/catalogo') {
     }
     $args=[]; $where='p.active=1';
     if($filters['q']!=='') { $where.=' AND (p.name LIKE ? OR p.description LIKE ?)'; $args[]='%'.$filters['q'].'%'; $args[]='%'.$filters['q'].'%'; }
-    if($filters['categoria']) { $where.=' AND p.category_id=?'; $args[]=$filters['categoria']; }
+    if($filters['categoria']) { $where.=' AND EXISTS (SELECT 1 FROM categories c WHERE c.id=? AND '.productCategoryMembershipSql().')'; $args[]=$filters['categoria']; }
     $total=(int)query('SELECT COUNT(*) FROM products p WHERE '.$where,$args)->fetchColumn();
     $limit=$path==='/'?6:12;
     $requestedPage=is_scalar($_GET['pagina']??null)?(int)$_GET['pagina']:1;
     $page=$path==='/'?1:min(max(1,$requestedPage),max(1,(int)ceil($total/$limit)));
     $offset=($page-1)*$limit;
     $orderBy=$sortOptions[$filters['orden']]['sql'];
-    $products=query('SELECT p.*,c.name AS category,(SELECT path FROM product_images WHERE product_id=p.id ORDER BY id LIMIT 1) AS image FROM products p LEFT JOIN categories c ON c.id=p.category_id WHERE '.$where.' ORDER BY '.$orderBy.' LIMIT '.$limit.' OFFSET '.$offset,$args)->fetchAll();
+    $products=query('SELECT p.*,'.productCategoryNamesSql().' AS category,(SELECT path FROM product_images WHERE product_id=p.id ORDER BY id LIMIT 1) AS image FROM products p WHERE '.$where.' ORDER BY '.$orderBy.' LIMIT '.$limit.' OFFSET '.$offset,$args)->fetchAll();
+    if ($path==='/catalogo' && $products) {
+        // Fetch galleries for this page together, avoiding one query per card.
+        $productIds=array_column($products,'id');
+        $placeholders=implode(',',array_fill(0,count($productIds),'?'));
+        $cardImages=[];
+        foreach(query('SELECT product_id,path FROM product_images WHERE product_id IN ('.$placeholders.') ORDER BY id',$productIds)->fetchAll() as $image) {
+            $cardImages[$image['product_id']][]=$image['path'];
+        }
+        foreach($products as &$cardProduct) $cardProduct['images']=$cardImages[$cardProduct['id']]??[];
+        unset($cardProduct);
+    }
     render($path==='/'?'home':'catalog',['title'=>$path==='/'?'Objetos únicos. Ideas sin límites.':'Catálogo','products'=>$products,'categories'=>query('SELECT * FROM categories ORDER BY name')->fetchAll(),'total'=>$total,'page'=>$page,'filters'=>$filters,'sortOptions'=>$sortOptions]); return;
 }
 if (preg_match('#^/producto/(\d+)$#D',$path,$m)) {
-    $product=one('SELECT p.*,c.name AS category FROM products p LEFT JOIN categories c ON c.id=p.category_id WHERE p.id=? AND p.active=1',[$m[1]]);
+    $product=one('SELECT p.*,'.productCategoryNamesSql().' AS category FROM products p WHERE p.id=? AND p.active=1',[$m[1]]);
     if(!$product) abortPage(404,'No encontramos ese producto.');
+    $product['category_ids']=productCategoryIds((int)$product['id']);
     $suggested=[];
-    if($product['category_id']!==null) {
-        $suggested=query('SELECT p.*,c.name AS category,(SELECT path FROM product_images WHERE product_id=p.id ORDER BY id LIMIT 1) AS image FROM products p LEFT JOIN categories c ON c.id=p.category_id WHERE p.active=1 AND p.category_id=? AND p.id<>? ORDER BY p.featured DESC,p.id DESC LIMIT 3',[$product['category_id'],$product['id']])->fetchAll();
+    if($product['category_ids']) {
+        $placeholders=implode(',',array_fill(0,count($product['category_ids']),'?'));
+        $suggested=query('SELECT p.*,'.productCategoryNamesSql().' AS category,(SELECT path FROM product_images WHERE product_id=p.id ORDER BY id LIMIT 1) AS image FROM products p WHERE p.active=1 AND p.id<>? AND EXISTS (SELECT 1 FROM categories c WHERE c.id IN ('.$placeholders.') AND '.productCategoryMembershipSql().') ORDER BY p.featured DESC,p.id DESC LIMIT 3',array_merge([$product['id']],$product['category_ids']))->fetchAll();
     }
     render('product',['title'=>$product['name'],'product'=>$product,'images'=>query('SELECT * FROM product_images WHERE product_id=? ORDER BY id',[$m[1]])->fetchAll(),'suggested'=>$suggested]); return;
 }

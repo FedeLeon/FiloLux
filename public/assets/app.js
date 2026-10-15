@@ -1,4 +1,26 @@
 'use strict';
+// Catalog arrows are outside the product link, so changing photos never navigates.
+document.querySelectorAll('[data-product-photos]').forEach(card => {
+  let photos;
+  try { photos = JSON.parse(card.dataset.productPhotos); } catch (_) { return; }
+  const image = card.querySelector('[data-card-photo]');
+  const controls = card.querySelector('[data-card-photo-controls]');
+  if (!Array.isArray(photos) || photos.length < 2 || !photos.every(photo => typeof photo === 'string') || !image || !controls) return;
+  const name = image.alt;
+  const counter = card.querySelector('[data-card-photo-count]');
+  const status = card.querySelector('[data-card-photo-status]');
+  let index = 0;
+  controls.querySelectorAll('[data-card-photo-step]').forEach(button => {
+    button.addEventListener('click', () => {
+      index = (index + Number(button.dataset.cardPhotoStep) + photos.length) % photos.length;
+      image.src = photos[index];
+      image.alt = `${name}. Foto ${index + 1} de ${photos.length}`;
+      if (counter) counter.textContent = `${index + 1} / ${photos.length}`;
+      if (status) status.textContent = `Foto ${index + 1} de ${photos.length} de ${name}`;
+    });
+  });
+  controls.hidden = false;
+});
 const menu = document.querySelector('.menu-toggle');
 menu?.addEventListener('click', () => {
   const expanded = menu.getAttribute('aria-expanded') !== 'true';
