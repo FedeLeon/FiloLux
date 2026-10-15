@@ -2,6 +2,10 @@
 
 Tienda en español para un emprendimiento de corte láser. PHP 8.2+, MySQL/MariaDB, vistas de servidor, JavaScript y CSS locales. Incluye catálogo, fotos, carrito, cuentas de clientes, pedidos, Mercado Pago Checkout Pro, SMTP y administrador.
 
+## Deploy automático desde GitHub
+
+El flujo de GitHub Actions despliega los pushes a `main` en `filoluxlaser.com` mediante SSH. La configuración de secrets, las rutas y el alcance están en [DEPLOY.md](DEPLOY.md). Conserva configuración, fotos y logs del servidor.
+
 ## Instalación completamente manual en Hostinger
 
 Los archivos están directamente en este proyecto: `public/` contiene la parte pública y `filolux-private/` la aplicación privada. No hay instalador web, códigos de activación ni creación automática de tablas. La carpeta privada incluye dependencias PHP, el `.env` privado con el hash del administrador y un `config.php` editable con una clave de cifrado aleatoria ya generada. No incluye credenciales MySQL reales, productos ni pedidos de prueba. No requiere terminal, Node ni Composer en Hostinger.
@@ -154,6 +158,7 @@ python3 tests/cart_ajax.py
 python3 tests/admin_auth.py
 python3 tests/integration_http.py
 python3 tests/admin_settings.py
+python3 tests/deploy_hostinger.py # rsync local; no se conecta a Hostinger
 # Requiere requests para Python; Playwright instalado solo en el equipo de desarrollo:
 node tests/browser.cjs
 ```

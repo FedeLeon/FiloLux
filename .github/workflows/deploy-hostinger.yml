@@ -1,0 +1,101 @@
+name: Deploy FiloLux to Hostinger
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: filolux-hostinger-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout committed source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up PHP and Composer on GitHub
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: curl, fileinfo, gd, mbstring, openssl, pdo_mysql
+          tools: composer:v2
+          coverage: none
+
+      - name: Prepare production dependencies and validate PHP
+        shell: bash
+        run: |
+          set -euo pipefail
+          composer --working-dir=filolux-private validate --no-check-publish
+          composer --working-dir=filolux-private install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader --no-scripts --no-plugins
+          find filolux-private/app filolux-private/views public -type f -name '*.php' -print0 | xargs -0 -n 1 php -l
+          bash -n scripts/deploy-hostinger.sh
+
+      - name: Configure SSH
+        shell: bash
+        env:
+          SSH_HOST: ${{ secrets.HOSTINGER_SSH_HOST }}
+          SSH_PORT: ${{ secrets.HOSTINGER_SSH_PORT }}
+          SSH_USER: ${{ secrets.HOSTINGER_SSH_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.HOSTINGER_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HOSTINGER_SSH_KNOWN_HOSTS }}
+          DEPLOY_PATH: ${{ secrets.HOSTINGER_DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+          for name in SSH_HOST SSH_PORT SSH_USER SSH_PRIVATE_KEY SSH_KNOWN_HOSTS DEPLOY_PATH; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::Missing secret for $name; see DEPLOY.md."
+              exit 1
+            fi
+          done
+          [[ "$SSH_HOST" =~ ^[a-zA-Z0-9.-]+$ ]] || { echo 'Invalid SSH host'; exit 1; }
+          [[ "$SSH_PORT" =~ ^[0-9]{1,5}$ ]] && (( 10#$SSH_PORT > 0 && 10#$SSH_PORT <= 65535 )) || { echo 'Invalid SSH port'; exit 1; }
+          [[ "$SSH_USER" =~ ^[a-zA-Z0-9_-]+$ ]] || { echo 'Invalid SSH user'; exit 1; }
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$HOME/.ssh/filolux"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$HOME/.ssh/filolux_known_hosts"
+          chmod 600 "$HOME/.ssh/filolux" "$HOME/.ssh/filolux_known_hosts"
+          ssh-keygen -y -P '' -f "$HOME/.ssh/filolux" > /dev/null
+          cat > "$HOME/.ssh/filolux_config" <<SSH_CONFIG
+          Host hostinger-filolux
+            HostName $SSH_HOST
+            Port $SSH_PORT
+            User $SSH_USER
+            IdentityFile $HOME/.ssh/filolux
+            UserKnownHostsFile $HOME/.ssh/filolux_known_hosts
+            StrictHostKeyChecking yes
+            BatchMode yes
+            IdentitiesOnly yes
+            ConnectTimeout 30
+            ServerAliveInterval 15
+            ServerAliveCountMax 4
+          SSH_CONFIG
+          chmod 600 "$HOME/.ssh/filolux_config"
+
+      - name: Deploy application files
+        shell: bash
+        env:
+          HOSTINGER_DEPLOY_PATH: ${{ secrets.HOSTINGER_DEPLOY_PATH }}
+        run: bash scripts/deploy-hostinger.sh
+
+      - name: Check public site
+        shell: bash
+        run: |
+          set -euo pipefail
+          for path in / /catalogo /login; do
+            curl --fail --silent --show-error --location --retry 3 --retry-delay 5 --max-time 30 "https://filoluxlaser.com$path" > /dev/null
+          done
+
+      - name: Remove temporary SSH credentials
+        if: always()
+        shell: bash
+        run: rm -f "$HOME/.ssh/filolux" "$HOME/.ssh/filolux_known_hosts" "$HOME/.ssh/filolux_config"
