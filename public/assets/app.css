@@ -296,3 +296,32 @@ h1 em,h2 em,h3 em,h4 em,h5 em,h6 em{font-weight:inherit}
  .hero h1{font-size:clamp(30px,8.8vw,60px)}
  .hero-art.hero-brand{grid-column:1;grid-row:auto;margin-top:32px}
 }
+
+/* Decorative technology rings stay behind the wordmark and never intercept clicks. */
+.hero-art.hero-brand{isolation:isolate;overflow:visible}
+.hero-tech-rings{position:absolute;left:50%;top:50%;width:100%;height:auto;max-width:none;transform:translate(-50%,-50%);color:var(--accent);pointer-events:none;z-index:-1}
+.hero-tech-orbit{transform-box:view-box;transform-origin:300px 180px;animation:hero-orbit-spin 36s linear infinite}
+.hero-tech-orbit-inner{animation-duration:26s;animation-direction:reverse}
+.hero-tech-orbit-wide{animation-name:hero-ring-travel;animation-duration:48s;animation-direction:reverse}
+@keyframes hero-ring-travel{to{stroke-dashoffset:-1000}}
+@keyframes hero-orbit-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.hero-tech-orbit{animation:none}}
+
+/* Full logo with a gold light burst in the custom-work section. */
+.custom-wordmark{position:relative;z-index:1;display:block;width:100%;max-width:480px}
+.custom-wordmark img{width:100%;height:auto}
+.custom-art::before{content:"";position:absolute;inset:12% 0;background:radial-gradient(ellipse,#d4ac5c26,transparent 68%);pointer-events:none;animation:custom-brand-glow 8s ease-in-out infinite alternate}
+.custom-art .orbit{--orbit-tilt:-25deg;--orbit-scale:1.4;border-color:var(--accent);opacity:.5;pointer-events:none;animation:custom-orbit-spin 24s linear infinite}
+.custom-art .orbit-two{--orbit-tilt:45deg;--orbit-scale:.75;border-style:dashed;opacity:.35;animation-duration:32s;animation-direction:reverse}
+.custom-art .sketch-label{z-index:1}
+@keyframes custom-orbit-spin{from{transform:rotate(var(--orbit-tilt)) scaleX(var(--orbit-scale))}to{transform:rotate(calc(var(--orbit-tilt) + 360deg)) scaleX(var(--orbit-scale))}}
+@keyframes custom-brand-glow{from{opacity:.35}to{opacity:.8}}
+@media(prefers-reduced-motion:reduce){.custom-art .orbit,.custom-art::before{animation:none}}
+
+.custom-art .orbit::before,.custom-art .orbit::after{content:"";position:absolute;top:50%;width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent);transform:translateY(-50%)}
+.custom-art .orbit::before{left:-4px}
+.custom-art .orbit::after{right:-4px;width:4px;height:4px}
+
+/* A slightly larger, lower wordmark keeps its rings centered behind it. */
+.hero-art.hero-brand{padding-inline:clamp(18px,2.5vw,32px);transform:translateY(24px)}
+@media(max-width:720px){.hero-art.hero-brand{transform:translateY(12px)}}
