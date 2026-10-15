@@ -67,7 +67,7 @@ os.execvp('bash',['bash','-c',' '.join(args)])
     write(config, '# Local fixture only')
     log = temp / 'transport.log'
     env = {**os.environ, 'PATH': str(shim.parent) + os.pathsep + os.environ['PATH'],
-           'FILOLUX_SSH_CONFIG': str(config), 'HOSTINGER_DEPLOY_PATH': str(public), 'SSH_TEST_LOG': str(log)}
+           'FILOLUX_SSH_CONFIG': str(config), 'HOSTINGER_DEPLOY_PATH': str(public), 'SSH_TEST_LOG': str(log), 'HOSTINGER_PHP_BIN': ''}
 
     def run(**overrides):
         return subprocess.run(['bash', str(source / 'scripts/deploy-hostinger.sh')],
@@ -90,6 +90,29 @@ os.execvp('bash',['bash','-c',' '.join(args)])
     for path, snapshot in snapshots.items():
         assert (path.read_bytes(), path.stat().st_mode) == snapshot, str(path)
 
+    # Reproduce Hostinger's older default CLI and provide a compatible alternative.
+    real_php = shutil.which('php')
+    assert real_php and Path(real_php).is_absolute()
+    old_php = shim.parent / 'php'
+    write(old_php, '#!/usr/bin/env bash\necho "PHP 7.4 fixture" >&2\nexit 1\n')
+    old_php.chmod(0o755)
+    compatible_php = shim.parent / 'php8.2'
+    write(compatible_php, '#!/usr/bin/env python3\nimport os, sys\nos.execv(' + repr(real_php) + ', [' + repr(real_php) + '] + sys.argv[1:])\n')
+    compatible_php.chmod(0o755)
+    write(private / 'app/main.php', 'old-cli-fixture')
+    result = run()
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert 'Using PHP CLI:' in result.stdout
+    assert (private / 'app/main.php').read_text() == 'new-app/main.php'
+    # An explicit override selects exactly that executable; no fallback on failure.
+    result = run(HOSTINGER_PHP_BIN=str(compatible_php))
+    assert result.returncode == 0 and str(compatible_php) in result.stdout
+    write(private / 'app/main.php', 'keep-before-failed-probe')
+    for executable in [str(old_php), str(temp / 'missing-php')]:
+        result = run(HOSTINGER_PHP_BIN=executable)
+        assert result.returncode != 0 and 'No compatible PHP CLI' in result.stderr
+        assert (private / 'app/main.php').read_text() == 'keep-before-failed-probe'
+
     # Reject invalid paths before any SSH call.
     count = len(log.read_text().splitlines())
     for path in ['/', '/public_html', 'relative/public_html', str(server) + '/../other/public_html', str(server) + '//public_html']:
@@ -111,4 +134,4 @@ os.execvp('bash',['bash','-c',' '.join(args)])
     assert run().returncode != 0
     assert (outside / 'keep.php').read_text() == 'KEEP-OUTSIDE'
 
-print('PASS: rsync real sobre carpetas temporales; código actualizado, obsoletos eliminados, configuración/fotos/logs/permisos conservados; rutas inválidas, otro dominio y enlaces rechazados. SSH simulado; sin conexión a Hostinger.')
+print('PASS: rsync real sobre carpetas temporales; código actualizado, obsoletos eliminados, configuración/fotos/logs/permisos conservados; rutas inválidas, otro dominio y enlaces rechazados. CLI predeterminado antiguo, detección alternativa y ruta PHP explícita verificados. SSH simulado; sin conexión a Hostinger.')

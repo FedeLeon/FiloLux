@@ -15,11 +15,11 @@ concurrency:
 jobs:
   deploy:
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - name: Checkout committed source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           persist-credentials: false
 
@@ -51,9 +51,17 @@ jobs:
           DEPLOY_PATH: ${{ secrets.HOSTINGER_DEPLOY_PATH }}
         run: |
           set -euo pipefail
-          for name in SSH_HOST SSH_PORT SSH_USER SSH_PRIVATE_KEY SSH_KNOWN_HOSTS DEPLOY_PATH; do
+          for mapping in \
+            SSH_HOST:HOSTINGER_SSH_HOST \
+            SSH_PORT:HOSTINGER_SSH_PORT \
+            SSH_USER:HOSTINGER_SSH_USER \
+            SSH_PRIVATE_KEY:HOSTINGER_SSH_PRIVATE_KEY \
+            SSH_KNOWN_HOSTS:HOSTINGER_SSH_KNOWN_HOSTS \
+            DEPLOY_PATH:HOSTINGER_DEPLOY_PATH; do
+            name="${mapping%%:*}"
+            secret_name="${mapping#*:}"
             if [[ -z "${!name}" ]]; then
-              echo "::error::Missing secret for $name; see DEPLOY.md."
+              echo "::error::Missing GitHub Actions repository secret: $secret_name; see DEPLOY.md."
               exit 1
             fi
           done
@@ -85,6 +93,7 @@ jobs:
         shell: bash
         env:
           HOSTINGER_DEPLOY_PATH: ${{ secrets.HOSTINGER_DEPLOY_PATH }}
+          HOSTINGER_PHP_BIN: ${{ vars.HOSTINGER_PHP_BIN }}
         run: bash scripts/deploy-hostinger.sh
 
       - name: Check public site

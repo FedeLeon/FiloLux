@@ -23,7 +23,9 @@ La tienda debe estar instalada y funcionando con PHP 8.2+, con esta distribució
 
 Confirmá la ruta absoluta real con los datos SSH de hPanel; el nombre de usuario no se deduce del dominio. Si tu carpeta privada está en otra ubicación, este flujo necesita adaptar la ruta antes de ejecutarlo.
 
-Activá SSH en tu hosting y autorizá allí la clave pública de una clave dedicada al deploy. Guardá su clave privada **sin passphrase** como secret de GitHub, no como archivo del repositorio. El servidor necesita `bash`, `rsync`, `realpath` y PHP CLI 8.2+ con las extensiones de la aplicación. El PHP de SSH puede tener una versión diferente al PHP seleccionado para la web; el flujo lo comprueba y se detiene si es incompatible.
+Activá SSH en tu hosting y autorizá allí la clave pública de una clave dedicada al deploy. Guardá su clave privada **sin passphrase** como secret de GitHub, no como archivo del repositorio. El servidor necesita `bash`, `rsync`, `realpath` y PHP CLI 8.2+ con las extensiones de la aplicación. El PHP de SSH puede tener una versión diferente al PHP seleccionado para la web. El flujo busca automáticamente un CLI compatible: primero `/opt/alt/php82/usr/bin/php`, luego PHP 8.3/8.4/8.5 en la misma estructura y, finalmente, los comandos PHP disponibles. Comprueba versión y extensiones antes de sincronizar; no modifica la versión global ni la configuración de la web. Si no encuentra ninguno compatible, se detiene.
+
+Si necesitás indicar otra ubicación, creá la **variable** de repositorio `HOSTINGER_PHP_BIN` en GitHub → Settings → Secrets and variables → Actions → Variables, con la ruta absoluta del ejecutable en Hostinger. Es opcional, no es un secret. Si la definís, se usa exclusivamente ese ejecutable y se valida igual.
 
 En el repositorio de **FiloLux**, abrí **Settings → Secrets and variables → Actions → New repository secret** y configurá:
 
