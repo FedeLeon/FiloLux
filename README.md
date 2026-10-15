@@ -4,7 +4,7 @@ Tienda en español para un emprendimiento de corte láser. PHP 8.2+, MySQL/Maria
 
 ## Deploy automático desde GitHub
 
-El flujo de GitHub Actions despliega los pushes a `main` en `filoluxlaser.com` mediante SSH. La configuración de secrets, las rutas y el alcance están en [DEPLOY.md](DEPLOY.md). Conserva configuración, fotos y logs del servidor.
+El flujo de GitHub Actions despliega los pushes a `main` en `filoluxlaser.com` mediante SSH. La configuración de secrets, las rutas y el alcance están en [DEPLOY.md](DEPLOY.md). Conserva configuración, fotos y logs del servidor. Los estilos y scripts usan URLs versionadas según su contenido para evitar que el navegador conserve archivos de una entrega anterior.
 
 ## Instalación completamente manual en Hostinger
 
@@ -136,6 +136,10 @@ php -S 127.0.0.1:8080 -t public public/router.php
 ```
 
 Antes de abrir `http://127.0.0.1:8080`, usá `filolux-private/config.php` (o copiá allí `filolux-private/config.example.php` si no existe), completá URL y conexión y conservá la clave existente; si partís de un ejemplo vacío, generala con `base64_encode(random_bytes(32))`. Importá manualmente `filolux-private/database/schema.sql` y luego `filolux-private/database/initial-data.sql` en una base local vacía. `filolux-private/` ya incluye una configuración con clave generada y ambos SQL combinados. Mercado Pago requiere URL HTTPS y credenciales.
+
+Para desarrollo, la URL de `filolux-private/config.php` debe ser `http://127.0.0.1:8080` y la conexión debe apuntar a una base MySQL local. También podés importar directamente `filolux-private/database/filolux.sql` en lugar de los dos SQL separados. Importá los datos iniciales únicamente al crear una base vacía. La configuración privada está ignorada por Git y el deploy conserva la configuración que ya existe en Hostinger. Si `vendor/autoload.php` ya está presente, no necesitás repetir `composer install`. Para detener el servidor local, usá Ctrl+C.
+
+Para cargar un catálogo ficticio local, ejecutá `php scripts/seed-demo.php`. Agrega cinco categorías y veinte productos identificados con `(Demo)`, con precios, medidas, destacados y consultas personalizadas. No incluye fotos ni configura pagos. Puede repetirse sin duplicar los ejemplos ni sobrescribir ediciones existentes. Se limita a la base `filolux` en localhost/127.0.0.1, puerto 3306 y URL local. El deploy no ejecuta este script ni sube los datos locales a Hostinger.
 
 Los archivos reales de la aplicación están en `filolux-private/`; los públicos, en `public/`. La raíz conserva documentación, herramientas de desarrollo y pruebas vigentes.
 

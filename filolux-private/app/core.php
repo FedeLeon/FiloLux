@@ -1,6 +1,15 @@
 <?php
 declare(strict_types=1);
 function e(mixed $s): string { return htmlspecialchars((string)$s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
+function assetUrl(string $path): string {
+    // A new URL when bytes change avoids serving a previous deploy from cache.
+    static $versions = [];
+    if (!isset($versions[$path])) {
+        $file = PUBLIC_ROOT.$path;
+        $versions[$path] = substr(hash_file('sha256', $file), 0, 16);
+    }
+    return $path.'?v='.$versions[$path];
+}
 function db(): PDO {
     static $pdo;
     if (!$pdo) { $c=$GLOBALS['config']['db']; $pdo=new PDO("mysql:host={$c['host']};port={$c['port']};dbname={$c['name']};charset=utf8mb4", $c['user'], $c['password'], [PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC,PDO::ATTR_EMULATE_PREPARES=>false]); $pdo->exec("SET time_zone = '-03:00'"); }

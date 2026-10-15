@@ -7,7 +7,7 @@ $adminLinks=[
     '/admin/configuracion'=>['Configuración','M4 6h16M4 12h16M4 18h16M8 3v6M16 9v6M10 15v6'],
 ];
 ?>
-<!doctype html><html lang="es-AR" data-palette="gold" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#111410"><title><?= e($title??'Administración') ?> · <?= e($brandName) ?></title><link rel="icon" type="image/svg+xml" href="/assets/brand/icon-white.svg" data-brand-favicon><script src="/assets/theme.js"></script><link rel="stylesheet" href="/assets/app.css"><script src="/assets/app.js" defer></script></head>
+<!doctype html><html lang="es-AR" data-palette="gold" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#111410"><title><?= e($title??'Administración') ?> · <?= e($brandName) ?></title><link rel="icon" type="image/svg+xml" href="/assets/brand/icon-white.svg" data-brand-favicon><script src="<?= e(assetUrl('/assets/theme.js')) ?>"></script><link rel="stylesheet" href="<?= e(assetUrl('/assets/app.css')) ?>"><script src="<?= e(assetUrl('/assets/app.js')) ?>" defer></script></head>
 <body class="admin-page">
 <a href="#contenido" class="skip">Ir al contenido</a>
 <div class="admin-shell">
