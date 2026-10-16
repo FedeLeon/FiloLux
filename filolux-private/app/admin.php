@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 if($path==='/admin/visitas' || str_starts_with($path,'/admin/visitas/')) { require ROOT.'/app/admin-visits.php'; return; }
+if($path==='/admin/usuarios') {
+    $search=is_string($_GET['q']??null)?mb_substr(trim($_GET['q']),0,100):'';
+    $where="u.role='customer'"; $args=[];
+    if($search!=='') { $pattern='%'.str_replace(['!','%','_'],['!!','!%','!_'],$search).'%'; $where.=" AND (u.name LIKE ? ESCAPE '!' OR u.email LIKE ? ESCAPE '!')"; $args=[$pattern,$pattern]; }
+    $total=(int)query('SELECT COUNT(*) FROM users u WHERE '.$where,$args)->fetchColumn();
+    $page=min(max(1,is_scalar($_GET['pagina']??null)?(int)$_GET['pagina']:1),max(1,(int)ceil($total/25)));
+    $fields=hasUserProfiles()?',u.phone,u.street,u.street_number,u.apartment,u.city,u.province,u.postal_code':'';
+    $customers=query('SELECT u.id,u.name,u.email,u.created_at'.$fields.',(SELECT COUNT(*) FROM orders o WHERE o.user_id=u.id) AS order_count FROM users u WHERE '.$where.' ORDER BY u.created_at DESC,u.id DESC LIMIT 25 OFFSET '.(($page-1)*25),$args)->fetchAll();
+    render('admin-users',['title'=>'Usuarios registrados','customers'=>$customers,'search'=>$search,'total'=>$total,'page'=>$page]); return;
+}
 if($path==='/admin') {
     render('admin-dashboard',['title'=>'Tu taller, en un solo lugar','counts'=>['products'=>(int)query('SELECT COUNT(*) FROM products')->fetchColumn(),'orders'=>(int)query('SELECT COUNT(*) FROM orders')->fetchColumn(),'pending'=>(int)query("SELECT COUNT(*) FROM orders WHERE payment_status='approved' AND status IN ('pendiente','en fabricación')")->fetchColumn()],'orders'=>query('SELECT * FROM orders ORDER BY id DESC LIMIT 8')->fetchAll()]); return;
 }
@@ -118,6 +128,11 @@ if(preg_match('#^/admin/mensajes/(\d+)/estado$#D',$path,$m) && $post) {
     $respondedAt=$status==='respondido'?'COALESCE(responded_at,CURRENT_TIMESTAMP)':'NULL';
     query('UPDATE contact_messages SET status=?,responded_at='.$respondedAt.' WHERE id=?',[$status,$m[1]]);
     flash('Estado del mensaje actualizado.'); redirect('/admin/mensajes');
+}
+if($path==='/admin/configuracion/logs' && !$post) {
+    require ROOT.'/app/php-errors.php';
+    $log=phpErrorLogTail(ROOT.'/storage/php-error.log');
+    render('admin-php-errors',['title'=>'Errores de PHP','log'=>$log]); return;
 }
 if($path==='/admin/configuracion') {
     $error='';

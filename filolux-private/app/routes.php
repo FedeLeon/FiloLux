@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 $post=$_SERVER['REQUEST_METHOD']==='POST';
+require ROOT.'/app/profiles.php';
+if($path==='/cuenta/perfil') return;
 if(str_starts_with($path,'/carrito')) require ROOT.'/app/cart.php';
 if(str_starts_with($path,'/admin')) { requireUser(true); require ROOT.'/app/admin.php'; return; }
 if (($path==='/a-medida' && !$post) || ($path==='/consultas' && $post)) { require ROOT.'/app/inquiries.php'; return; }
@@ -93,13 +95,14 @@ if ($path==='/carrito') {
     render('cart',['title'=>'Tu carrito','items'=>cartItems()]); return;
 }
 if ($path==='/checkout') {
-    $u=requireUser(); $items=cartItems(); foreach($items as $item) if($item['invalid_color']) throw new InvalidArgumentException('Un color del carrito ya no está disponible. Quitá esa pieza y volvé a elegirla desde el catálogo.'); if(!$items) { flash('Tu carrito está vacío.'); redirect('/carrito'); }
+    $u=requireUser(); $customer=userProfile($u); $items=cartItems(); foreach($items as $item) if($item['invalid_color']) throw new InvalidArgumentException('Un color del carrito ya no está disponible. Quitá esa pieza y volvé a elegirla desde el catálogo.'); if(!$items) { flash('Tu carrito está vacío.'); redirect('/carrito'); }
     if($post) {
         if (!hash_equals($_SESSION['checkout_key']??'',(string)($_POST['checkout_key']??''))) throw new InvalidArgumentException('El carrito cambió. Volvé a revisar la compra.');
         if(!Payments::enabled()) throw new InvalidArgumentException('Los pagos todavía no están habilitados. Consultanos desde Contacto.');
         $name=textInput('name',120); $phone=textInput('phone',40); if(!preg_match('/^[+\d\s().-]{6,40}$/D',$phone)) throw new InvalidArgumentException('Ingresá un teléfono válido.');
         $delivery=textInput('delivery',20); if(!in_array($delivery,['pickup','shipping'],true)) throw new InvalidArgumentException('Elegí una forma de entrega.');
-        $address=$delivery==='shipping'?textInput('address',1000):''; if($delivery==='shipping' && mb_strlen($address)<12) throw new InvalidArgumentException('Indicá calle, número, localidad, provincia y código postal.'); $notes=textInput('notes',2000,false);
+        $shippingData=$delivery==='shipping'?profileInput(true):[];
+        $address=$delivery==='shipping'?shippingAddress($shippingData):''; $notes=textInput('notes',2000,false);
         db()->beginTransaction();
         try {
             // Serialize retries from the same account, including double submissions.
@@ -123,7 +126,7 @@ if ($path==='/checkout') {
         sendMail($u['email'],'Recibimos tu pedido #'.$id,'Tu pedido fue registrado. Completá el pago desde '.url('/pedidos/'.$id).'. La fabricación comienza al confirmar el pago.');
         flash('Pedido registrado. Continuá con el pago para confirmar tu compra.'); redirect('/pedidos/'.$id);
     }
-    $_SESSION['checkout_key']??=bin2hex(random_bytes(32)); render('checkout',['title'=>'Finalizar compra','items'=>$items,'customer'=>$u]); return;
+    $_SESSION['checkout_key']??=bin2hex(random_bytes(32)); render('checkout',['title'=>'Finalizar compra','items'=>$items,'customer'=>$customer]); return;
 }
 if($path==='/cuenta') { $u=requireUser(); render('account',['title'=>'Mi cuenta','orders'=>query('SELECT * FROM orders WHERE user_id=? ORDER BY id DESC LIMIT 100',[$u['id']])->fetchAll()]); return; }
 if(preg_match('#^/pedidos/(\d+)(/pagar)?$#D',$path,$m)) {

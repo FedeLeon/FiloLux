@@ -48,8 +48,8 @@ t,r=csrf(a,'/checkout'); check('Los pagos todavía no están habilitados' in r.t
 fixture('enable-payments')
 try:
     t,r=csrf(a,'/checkout'); key=re.search(r'name="checkout_key" value="([^"]+)"',r.text).group(1)
-    data={'checkout_key':key,'name':'Cliente A','phone':'5491112345678','delivery':'shipping','address':'Calle de Prueba 123, Córdoba, Córdoba, 5000','notes':'Prueba de integración','total':1,'shipping_price':0}
-    bad=post(a,'/checkout',{**data,'address':'x'},t); check(bad.status_code==422,'dirección incompleta rechazada')
+    data={'checkout_key':key,'name':'Cliente A','phone':'5491112345678','delivery':'shipping','street':'Calle de Prueba','street_number':'123','city':'Córdoba','province':'Córdoba','postal_code':'5000','notes':'Prueba de integración','total':1,'shipping_price':0}
+    bad=post(a,'/checkout',{**data,'postal_code':''},t); check(bad.status_code==422,'dirección incompleta rechazada')
     r=post(a,'/checkout',data,t); check(r.status_code==303,'crear pedido con envío')
     path=urlparse(r.headers['Location']).path; order_id=int(path.rsplit('/',1)[1]); r=get(a,path)
     check('$ 52.500,00' in r.text,'envío y total autoritativos')

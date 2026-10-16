@@ -226,3 +226,9 @@ Revisá periódicamente errores PHP y entregabilidad SMTP en Hostinger, notifica
 Para actualizar una tienda existente, importá `filolux-private/database/migrations/2026-10-16-product-colors.sql` desde phpMyAdmin **antes del deploy**. Es repetible y conserva los datos. Las instalaciones nuevas ya incluyen los campos en el SQL inicial.
 
 Al crear o editar productos podés marcar Madera cruda, Negro, Blanco, Rosa pastel, Celeste pastel y Dorado, o usar “Todos los colores”. Sin colores seleccionados no aparece el selector en la tienda. Con colores habilitados el cliente debe elegir uno. Cada color tiene su propio renglón en el carrito y queda guardado en el pedido; cambiar los colores del catálogo no altera pedidos anteriores. Si retirás un color que estaba en un carrito, el cliente deberá quitar esa pieza y elegir una opción vigente antes de comprar.
+
+### Usuarios, perfil y dirección de envío
+
+Antes de desplegar esta actualización en una tienda existente, importá `filolux-private/database/migrations/2026-10-16-user-profiles.sql` en phpMyAdmin. Es repetible y conserva los datos. La sección Usuarios del administrador permite consultar clientes registrados, buscar por nombre o correo y ver los datos que completaron.
+
+El menú de cuenta del encabezado ofrece Mi perfil, Mis pedidos y Cerrar sesión. El perfil permite guardar nombre, teléfono, calle, número, piso/departamento, localidad, provincia y código postal. El correo de acceso se muestra solo para lectura. Los datos guardados se usan al abrir el checkout. El envío requiere dirección completa; el retiro no. El checkout no sobrescribe el perfil y los pedidos conservan la dirección usada al comprar. Sin JavaScript se muestran los campos de dirección para permitir completar un envío.

@@ -397,3 +397,19 @@ h1 em,h2 em,h3 em,h4 em,h5 em,h6 em{font-weight:inherit}
 .product-info .add-to-cart{flex-wrap:wrap}
 .product-info .add-to-cart .product-color-picker{flex-basis:100%;width:100%;margin-bottom:8px}
 .summary-line>span>small{display:block}
+
+.account-menu>summary{display:flex;align-items:center;gap:6px;cursor:pointer;list-style:none}
+.account-menu>summary::-webkit-details-marker{display:none}
+.account-menu>summary>span:first-child{max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.account-panel{position:absolute;top:calc(100% + 8px);right:0;width:280px;max-width:100%;padding:20px;background:var(--panel);border:1px solid var(--line);border-radius:6px;box-shadow:0 16px 40px #0004;z-index:55;font-size:14px}
+.account-panel p{padding-bottom:14px;margin-bottom:10px;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
+.account-panel strong,.account-panel small{display:block}
+.account-panel a,.account-panel button{display:block;width:100%;padding:10px 0;text-align:left}
+.account-panel button{border:0;border-top:1px solid var(--line);background:transparent;color:var(--ink);font-size:14px}
+.account-panel button:hover{color:var(--accent)}
+.profile-page{max-width:900px}
+.shipping-address{min-width:0;border:1px solid var(--line);padding:20px;margin:20px 0;border-radius:5px}
+.shipping-address legend{font-size:16px;padding-inline:6px}
+@media(max-width:420px){.account-menu>summary>span:first-child{max-width:65px}}
+
+.php-log-output{max-height:65vh;overflow:auto;margin:0;padding:20px;border:1px solid var(--line);border-radius:5px;background:var(--field-bg,var(--bg));color:var(--ink);font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:13px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere;tab-size:4}

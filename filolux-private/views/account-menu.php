@@ -1,0 +1,3 @@
+<?php $accountUser=user(); if($accountUser): ?>
+<details class="account-menu" data-account-menu><summary class="account-link" aria-label="Cuenta de <?= e($accountUser['name']) ?>"><span><?= e(explode(' ',trim($accountUser['name']))[0]) ?></span><span aria-hidden="true">⌄</span></summary><div class="account-panel"><p><strong><?= e($accountUser['name']) ?></strong><small><?= e($accountUser['email']) ?></small></p><a href="/cuenta/perfil">Mi perfil</a><a href="/cuenta">Mis pedidos</a><?php if($accountUser['role']==='admin'): ?><a href="/admin">Administración</a><?php endif ?><form method="post" action="/logout"><?= csrf() ?><button type="submit">Cerrar sesión ↗</button></form></div></details>
+<?php else: ?><a class="account-link" href="/login">Ingresar</a><?php endif ?>

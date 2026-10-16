@@ -194,7 +194,7 @@ if (checkout) {
     const shipping = checkout.querySelector('[name="delivery"]:checked').value === 'shipping';
     const address = document.querySelector('#address-field');
     address.hidden = !shipping;
-    address.querySelector('textarea').required = shipping;
+    address.querySelectorAll('[data-shipping-required]').forEach(input => { input.required = shipping; });
     const shippingLabel = document.querySelector('#shipping-total');
     const cost = shipping ? Number(shippingLabel.dataset.shipping) : 0;
     shippingLabel.textContent = shipping ? money(cost) : 'Gratis';
@@ -333,3 +333,12 @@ document.querySelectorAll('[data-all-colors]').forEach(button => {
     button.closest('[data-admin-colors]').querySelectorAll('input[type="checkbox"]').forEach(input => { input.checked = true; });
   });
 });
+
+// The account menu also works natively when JavaScript is unavailable.
+const accountMenu = document.querySelector('[data-account-menu]');
+if (accountMenu) {
+  document.addEventListener('click', event => { if (!accountMenu.contains(event.target)) accountMenu.open = false; });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && accountMenu.open) { accountMenu.open = false; accountMenu.querySelector('summary').focus(); }
+  });
+}

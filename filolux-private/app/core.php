@@ -87,7 +87,7 @@ function user(): ?array {
     }
     return $u;
 }
-function requireUser(bool $admin=false): array { $u=user(); if (!$u) { $intended=parse_url($_SERVER['REQUEST_URI']??'/',PHP_URL_PATH); if(!$admin && preg_match('#^/(checkout|cuenta|pedidos/\d+)$#D',$intended)) $_SESSION['intended']=$intended; flash('Ingresá para continuar.'); redirect('/login'); } if ($admin && $u['role']!=='admin') abortPage(403,'No tenés acceso a esta sección.'); return $u; }
+function requireUser(bool $admin=false): array { $u=user(); if (!$u) { $intended=parse_url($_SERVER['REQUEST_URI']??'/',PHP_URL_PATH); if(!$admin && preg_match('#^/(checkout|cuenta(?:/perfil)?|pedidos/\d+)$#D',$intended)) $_SESSION['intended']=$intended; flash('Ingresá para continuar.'); redirect('/login'); } if ($admin && $u['role']!=='admin') abortPage(403,'No tenés acceso a esta sección.'); return $u; }
 function wantsJson(): bool { return str_contains($_SERVER['HTTP_ACCEPT']??'', 'application/json'); }
 function jsonResponse(array $data,int $status=200): never { http_response_code($status); header('Content-Type: application/json; charset=UTF-8'); echo json_encode($data,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE); exit; }
 function abortPage(int $status,string $message): never { if(wantsJson()) jsonResponse(['error'=>$message],$status); http_response_code($status); render('message',['title'=>'FiloLux','message'=>$message]); exit; }
