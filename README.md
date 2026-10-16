@@ -193,6 +193,7 @@ python3 tests/admin_settings.py
 python3 tests/deploy_hostinger.py # rsync local; no se conecta a Hostinger
 # Requiere requests para Python; Playwright instalado solo en el equipo de desarrollo:
 node tests/browser.cjs
+node tests/mobile_layout.cjs
 node tests/photo_preview.cjs
 ```
 

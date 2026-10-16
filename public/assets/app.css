@@ -284,17 +284,17 @@ h1 em,h2 em,h3 em,h4 em,h5 em,h6 em{font-weight:inherit}
 .hero-brand .brand-wordmark{width:100%;max-width:100%}
 .hero-brand .brand-logo,.hero-brand .brand-upload{width:100%;height:auto;max-width:100%;max-height:none;object-fit:contain}
 
-/* Align the home wordmark with the heading rather than the full text column. */
-.hero{row-gap:0}
+/* Read the introduction in order: specialty, animated logo, title and details. */
+.hero{grid-template-columns:minmax(0,1fr);row-gap:0}
 .hero-copy{display:contents}
 .hero-copy>*{grid-column:1}
 .hero h1{margin-bottom:0}
 .hero-description{margin-top:28px}
 .hero h1>span{display:block}
-.hero-art.hero-brand{grid-column:2;grid-row:2;align-self:center;aspect-ratio:auto;padding-block:0}
+.hero-art.hero-brand{grid-column:1;grid-row:auto;justify-self:start;aspect-ratio:5/3;max-width:560px;margin:0 0 28px;padding-block:0}
 @media(max-width:720px){
  .hero h1{font-size:clamp(30px,8.8vw,60px)}
- .hero-art.hero-brand{grid-column:1;grid-row:auto;margin-top:32px}
+ .hero-art.hero-brand{max-width:420px}
 }
 
 /* Decorative technology rings stay behind the wordmark and never intercept clicks. */
@@ -322,6 +322,46 @@ h1 em,h2 em,h3 em,h4 em,h5 em,h6 em{font-weight:inherit}
 .custom-art .orbit::before{left:-4px}
 .custom-art .orbit::after{right:-4px;width:4px;height:4px}
 
-/* A slightly larger, lower wordmark keeps its rings centered behind it. */
-.hero-art.hero-brand{padding-inline:clamp(18px,2.5vw,32px);transform:translateY(24px)}
-@media(max-width:720px){.hero-art.hero-brand{transform:translateY(12px)}}
+.hero-art.hero-brand{padding-inline:clamp(18px,2.5vw,32px)}
+@media(max-width:720px){
+ /* Reserve the rings' full height so they stay inside the hero section. */
+ .hero-tech-rings{width:100%;max-height:100%}
+ .custom-section h2{font-size:clamp(32px,8vw,43px)}
+ .product-detail>*,.contact-grid>*,.checkout-layout>*,.cart-item>div{min-width:0}
+ .product-card h3,.product-info h1,.cart-item h3,.contact-card,.summary-line>span{overflow-wrap:anywhere}
+ .product-placeholder{gap:12px;padding:12px 8px 38px}
+ .product-placeholder>small{max-width:100%;text-align:center;letter-spacing:1px}
+ .cart-item{grid-template-columns:65px minmax(0,1fr)}
+ .social-links{flex-wrap:wrap;gap:15px 20px}
+ /* Keep iOS from zooming the page when a customer focuses a field. */
+ input,textarea,select,.catalog-filters select{font-size:16px}
+ .add-to-cart{gap:12px}
+ .add-to-cart label{width:80px;flex-shrink:0}
+ .add-to-cart .btn{min-width:0;gap:10px;padding-inline:12px}
+ .process{grid-template-columns:1fr}
+ .process>div:first-child{grid-column:auto}
+}
+@media(max-width:420px){
+ .site-header{gap:6px}
+ .site-header .brand-wordmark,.site-header .brand .brand-logo{width:100px}
+ .header-actions{gap:6px}
+ .menu-toggle{width:36px;min-height:36px;flex-shrink:0;padding:4px}
+ .theme-toggle{width:36px;height:36px;flex-shrink:0}
+ .cart-link{min-height:36px;flex-shrink:0}
+ .account-link{padding-block:8px;white-space:nowrap}
+ .hero-actions{align-items:stretch;flex-direction:column;gap:18px}
+ .hero-actions .text-link{align-self:flex-start}
+ .stats-grid{grid-template-columns:1fr}
+ .stat{display:flex;align-items:center;gap:16px;padding:18px}
+ .stat>span:first-child{flex:1;font-size:14px}
+ .stat strong{font-size:30px;margin:0;letter-spacing:-1px}
+ .stat>span:last-child{position:static;font-size:14px}
+}
+@media(max-width:360px){
+ .site-header .brand-wordmark,.site-header .brand .brand-logo{width:80px}
+ .product-grid,.suggested-products .product-grid{grid-template-columns:minmax(0,1fr)}
+ .product-card h3{font-size:18px}
+ .product-meta{display:flex;gap:8px}
+ .product-meta>span+span{margin-top:0}
+ .product-placeholder>small{letter-spacing:1px}
+}
