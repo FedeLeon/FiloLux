@@ -19,5 +19,11 @@ try {
     } finally { query('SELECT RELEASE_LOCK(?)',[$lock]); }
     if($changed) { $o=one('SELECT * FROM orders WHERE id=?',[$p['external_reference']]); sendMail($o['email'],'Actualización del pago #'.$o['id'],'El pago de tu pedido está: '.paymentLabel($o['payment_status']).'. Consultá '.url('/pedidos/'.$o['id'])); }
     echo '{"ok":true}';
-} catch (InvalidArgumentException $ex) { http_response_code(422); echo '{"error":"payment_mismatch"}'; }
+} catch (InvalidArgumentException $ex) {
+    // Reconciliation messages are controlled diagnostics, without tokens or API payloads.
+    error_log('FiloLux: webhook rechazado payment_id='.$id.' entorno='.$mode.' motivo='.$ex->getMessage());
+    try { notifyLive('webhook-error:'.$mode.':'.$id.':'.$ex->getMessage(),'admin',null,'webhook_error','Webhook de Mercado Pago rechazado','Pago '.$id.': '.$ex->getMessage(),'/admin/configuracion/logs'); }
+    catch(Throwable $notificationError) { error_log('FiloLux: no se pudo registrar el aviso del webhook rechazado'); }
+    http_response_code(422); echo '{"error":"payment_mismatch"}';
+}
 catch (Throwable $ex) { error_log('FiloLux: webhook temporalmente no disponible'); http_response_code(503); echo '{"error":"retry"}'; }

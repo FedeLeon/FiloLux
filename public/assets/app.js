@@ -342,3 +342,58 @@ if (accountMenu) {
     if (event.key === 'Escape' && accountMenu.open) { accountMenu.open = false; accountMenu.querySelector('summary').focus(); }
   });
 }
+
+// Short polling works on shared hosting without a persistent server process.
+const liveToasts = document.querySelector('[data-live-notifications]');
+if (liveToasts) {
+  let cursor = liveToasts.dataset.cursor || '0';
+  let timer, controller, busy = false, stopped = false, delay = 5000;
+  const showNotice = notice => {
+    while (liveToasts.children.length >= 4) {
+      const removable = [...liveToasts.children].find(el => !el.contains(document.activeElement));
+      if (!removable) return;
+      removable.remove();
+    }
+    const toast = document.createElement('article');
+    toast.className = 'live-toast' + (notice.type === 'webhook_error' ? ' live-toast-error' : '');
+    toast.setAttribute('aria-atomic', 'true');
+    const title = document.createElement('strong'); title.textContent = notice.title;
+    const body = document.createElement('p'); body.textContent = notice.body;
+    const close = document.createElement('button'); close.type = 'button'; close.className = 'live-toast-close'; close.textContent = '×'; close.setAttribute('aria-label', 'Cerrar notificación');
+    close.addEventListener('click', () => toast.remove());
+    toast.append(title, body, close);
+    if (/^\/(?:admin\/pedidos\/\d+|pedidos\/\d+|admin\/configuracion\/logs)$/.test(notice.href)) {
+      const link = document.createElement('a'); link.href = notice.href; link.textContent = notice.type === 'webhook_error' ? 'Ver errores ↗' : 'Ver pedido ↗'; toast.append(link);
+    }
+    let expiry;
+    const dismissLater = () => { clearTimeout(expiry); expiry = setTimeout(() => toast.remove(), 8000); };
+    toast.addEventListener('pointerenter', () => clearTimeout(expiry));
+    toast.addEventListener('pointerleave', dismissLater);
+    toast.addEventListener('focusin', () => clearTimeout(expiry));
+    toast.addEventListener('focusout', dismissLater);
+    liveToasts.append(toast); dismissLater();
+  };
+  const pollNotices = async () => {
+    clearTimeout(timer);
+    if (stopped || busy || document.hidden) return;
+    busy = true; controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    try {
+      const response = await fetch('/notificaciones?desde=' + encodeURIComponent(cursor), {credentials:'same-origin', cache:'no-store', headers:{Accept:'application/json'}, signal:controller.signal});
+      if (response.redirected || response.status === 401 || response.status === 403) { stopped = true; return; }
+      if (!response.ok) throw new Error('Notifications unavailable');
+      const data = await response.json();
+      if (!data.available || String(data.viewer.id) !== liveToasts.dataset.user || data.viewer.role !== liveToasts.dataset.role) { stopped = true; return; }
+      data.events.forEach(showNotice); cursor = data.cursor; delay = 5000;
+      document.querySelectorAll('[data-order-count]').forEach(badge => {
+        badge.textContent = data.orders; badge.hidden = data.orders === 0;
+        badge.setAttribute('aria-label', data.orders + (data.orders === 1 ? ' pedido nuevo sin revisar' : ' pedidos nuevos sin revisar'));
+      });
+    } catch (_) { delay = Math.min(delay * 2, 30000); }
+    finally { clearTimeout(timeout); busy = false; if (!stopped && !document.hidden) timer = setTimeout(pollNotices, delay); }
+  };
+  document.addEventListener('visibilitychange', () => { clearTimeout(timer); if (!document.hidden) pollNotices(); });
+  window.addEventListener('pagehide', () => { stopped = true; clearTimeout(timer); controller?.abort(); });
+  window.addEventListener('pageshow', event => { if (event.persisted) { stopped = false; pollNotices(); } });
+  pollNotices();
+}

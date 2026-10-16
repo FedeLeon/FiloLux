@@ -1,6 +1,37 @@
 <?php
 declare(strict_types=1);
+require_once ROOT.'/app/notifications.php';
 final class Payments {
+    public static function hasTracking(): bool {
+        static $available;
+        return $available ??= (int)query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND ((TABLE_NAME='orders' AND COLUMN_NAME='payment_return_data') OR (TABLE_NAME='payments' AND COLUMN_NAME='details'))")->fetchColumn()===2;
+    }
+    public static function registerReturn(array $order,array $query): void {
+        if(!self::hasTracking() || in_array($order['payment_status'],['approved','refunded','charged_back'],true)) return;
+        $id=$query['payment_id']??$query['collection_id']??'';
+        if(!is_string($id) || !preg_match('/^[0-9]{1,100}$/D',$id)) return;
+        if(isset($query['external_reference']) && $query['external_reference']!==(string)$order['id']) return;
+        if(isset($query['preference_id']) && !empty($order['preference_id']) && $query['preference_id']!==$order['preference_id']) return;
+        $previous=json_decode($order['payment_return_data']??'null',true);
+        if(!empty($previous['payment_id']) && $previous['payment_id']!==$id && self::waiting($order)) return;
+        $data=['payment_id'=>$id,'received_at'=>date('c')];
+        foreach(['collection_id','collection_status','status','external_reference','payment_type','merchant_order_id','preference_id','site_id','processing_mode'] as $key) {
+            if(isset($query[$key]) && is_string($query[$key]) && strlen($query[$key])<=150) $data[$key]=$query[$key];
+        }
+        // Browser return values are only hints: they never confirm a payment.
+        query('UPDATE orders SET payment_return_data=? WHERE id=? AND user_id=?',[json_encode($data,JSON_THROW_ON_ERROR),$order['id'],$order['user_id']]);
+    }
+    public static function waiting(array $order): bool {
+        if(in_array($order['payment_status'],['approved','refunded','charged_back'],true)) return false;
+        if(in_array($order['payment_status'],['in_process','authorized'],true)) return true;
+        if(one("SELECT id FROM payments WHERE order_id=? AND status IN ('pending','in_process','authorized') LIMIT 1",[$order['id']])) return true;
+        $hint=json_decode($order['payment_return_data']??'null',true);
+        if(!empty($hint['payment_id'])) {
+            $payment=one('SELECT status FROM payments WHERE id=? AND order_id=?',[$hint['payment_id'],$order['id']]);
+            return !$payment || !in_array($payment['status'],['rejected','cancelled','approved','refunded','charged_back'],true);
+        }
+        return false;
+    }
     public static function enabled(?string $mode=null): bool { $mode??=setting('mp_mode','test'); return secret('mp_'.$mode.'_token')!=='' && secret('mp_'.$mode.'_webhook')!=='' && str_starts_with(url(),'https://'); }
     public static function api(string $method,string $path,string $mode,?array $body=null): array {
         $token=secret('mp_'.$mode.'_token'); if (!$token) throw new InvalidArgumentException('Los pagos todavía no están habilitados.');
@@ -39,15 +70,29 @@ final class Payments {
         try {
             $o=one('SELECT * FROM orders WHERE id=? FOR UPDATE',[$ref]);
             $amount=(int)round(((float)($payment['transaction_amount']??-1))*100);
-            if (!$o || $o['payment_mode']!==$mode || ($payment['currency_id']??'')!=='ARS' || $amount!==(int)$o['total_cents'] || (int)($payment['collector_id']??0)!==$collector || !array_key_exists('live_mode',$payment) || (bool)$payment['live_mode']!==($mode==='production')) throw new InvalidArgumentException('Pago no corresponde al pedido');
+            if(!$o) throw new InvalidArgumentException('La referencia del pago no corresponde a un pedido existente.');
+            if($o['payment_mode']!==$mode) throw new InvalidArgumentException('El entorno del pedido no coincide con el entorno del webhook (pruebas/producción).');
+            if(($payment['currency_id']??'')!=='ARS') throw new InvalidArgumentException('La moneda del pago no es ARS.');
+            if($amount!==(int)$o['total_cents']) throw new InvalidArgumentException('El importe del pago no coincide con el total del pedido.');
+            if((int)($payment['collector_id']??0)!==$collector) throw new InvalidArgumentException('La cuenta receptora del pago no coincide con la cuenta del Access Token.');
+            if(!array_key_exists('live_mode',$payment)) throw new InvalidArgumentException('Mercado Pago no informó el entorno del pago (live_mode).');
+            if((bool)$payment['live_mode']!==($mode==='production')) throw new InvalidArgumentException('El pago consultado pertenece a un entorno diferente al webhook (live_mode).');
             $existing=one('SELECT order_id FROM payments WHERE id=?',[$pid]);
             if($existing && (int)$existing['order_id']!==(int)$o['id']) throw new InvalidArgumentException('Pago ya asociado a otro pedido');
             $status=(string)($payment['status']??'');
             if (!in_array($status,['approved','pending','in_process','authorized','rejected','cancelled','refunded','charged_back'],true)) throw new InvalidArgumentException('Estado de pago desconocido');
             query('INSERT INTO payments (id,order_id,status,amount_cents) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE status=VALUES(status), amount_cents=VALUES(amount_cents)',[$pid,$o['id'],$status,$amount]);
+            if(self::hasTracking()) {
+                $details=[];
+                foreach(['payment_type_id','payment_method_id','date_created','date_approved','status_detail'] as $field) if(isset($payment[$field]) && is_scalar($payment[$field])) $details[$field]=(string)$payment[$field];
+                if(isset($payment['order']['id']) && is_scalar($payment['order']['id'])) $details['merchant_order_id']=(string)$payment['order']['id'];
+                query('UPDATE payments SET details=? WHERE id=?',[json_encode($details,JSON_THROW_ON_ERROR),$pid]);
+            }
             $latest=one("SELECT status FROM payments WHERE order_id=? ORDER BY FIELD(status,'approved','charged_back','refunded','authorized','in_process','pending','rejected','cancelled'), id DESC LIMIT 1",[$o['id']]);
             $new=$latest['status'];
             query('UPDATE orders SET payment_status=? WHERE id=?',[$new,$o['id']]);
+            notifyLive('payment:'.$mode.':'.$pid.':'.$status.':admin','admin',null,'payment_update','Pago actualizado · Pedido #'.$o['id'],'Mercado Pago: '.paymentLabel($status).'. Importe: '.money($amount).'.','/admin/pedidos/'.$o['id']);
+            if($new!==$o['payment_status'] || (!$existing && $status===$new)) notifyLive('payment:'.$mode.':'.$pid.':'.$status.':customer','customer',(int)$o['user_id'],'payment_update','Tu pago del pedido #'.$o['id'],'Estado del pago: '.paymentLabel($new).'.','/pedidos/'.$o['id']);
             db()->commit();
             return $new!==$o['payment_status'];
         } catch (Throwable $ex) { if(db()->inTransaction()) db()->rollBack(); throw $ex; }

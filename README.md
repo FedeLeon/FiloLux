@@ -232,3 +232,17 @@ Al crear o editar productos podés marcar Madera cruda, Negro, Blanco, Rosa past
 Antes de desplegar esta actualización en una tienda existente, importá `filolux-private/database/migrations/2026-10-16-user-profiles.sql` en phpMyAdmin. Es repetible y conserva los datos. La sección Usuarios del administrador permite consultar clientes registrados, buscar por nombre o correo y ver los datos que completaron.
 
 El menú de cuenta del encabezado ofrece Mi perfil, Mis pedidos y Cerrar sesión. El perfil permite guardar nombre, teléfono, calle, número, piso/departamento, localidad, provincia y código postal. El correo de acceso se muestra solo para lectura. Los datos guardados se usan al abrir el checkout. El envío requiere dirección completa; el retiro no. El checkout no sobrescribe el perfil y los pedidos conservan la dirección usada al comprar. Sin JavaScript se muestran los campos de dirección para permitir completar un envío.
+
+### Datos de pago y prevención de reintentos accidentales
+
+Antes del deploy, importá `filolux-private/database/migrations/2026-10-16-payment-tracking.sql` en tiendas existentes. Registra la referencia que devuelve el checkout sin acreditar el pago por esos parámetros. El pedido muestra por separado la referencia no verificada y los pagos confirmados mediante consulta a Mercado Pago desde el webhook, incluyendo ID, estado, importe y metadatos disponibles.
+
+Cuando hay una referencia sin verificar o un pago pendiente/en proceso/autorizado, el botón de pagar queda deshabilitado y el servidor rechaza nuevos intentos. El bloqueo persiste al recargar o cambiar de sesión. Un rechazo o cancelación confirmado permite reintentar. No se desbloquea automáticamente por tiempo: si el webhook falla, revisá las notificaciones de Mercado Pago. “Actualizar estado” vuelve a leer el estado guardado; no consulta por sí mismo a Mercado Pago.
+
+### Notificaciones en vivo y pedidos nuevos
+
+Antes del deploy, importá `filolux-private/database/migrations/2026-10-16-live-notifications.sql` en phpMyAdmin. La primera importación marca los pedidos históricos como revisados; las siguientes no alteran los nuevos pendientes de revisión. Las instalaciones nuevas incluyen la estructura en el SQL inicial.
+
+Con la web abierta y una sesión iniciada se consultan novedades cada 5 segundos. El admin recibe avisos de nuevos pedidos (incluidos los que todavía no están pagados), pagos verificados y webhooks rechazados después de validar su firma. Cada cliente recibe únicamente los cambios confirmados del estado de sus propios pagos. Los avisos aparecen arriba a la derecha, enlazan al pedido o al log y desaparecen después de 8 segundos; se pueden cerrar antes y el temporizador se pausa al pasar el cursor o enfocar el aviso. La consulta se pausa cuando la pestaña está oculta y se retoma al volver. No requiere WebSockets, servicios externos ni procesos permanentes en Hostinger.
+
+Los eventos se guardan con claves únicas para evitar avisos duplicados de Mercado Pago. El contador del menú Pedidos muestra pedidos nuevos sin revisar, independientemente del estado del pago, y baja al abrir cada detalle desde el admin. Ver la lista no marca todos como revisados. La burbuja se actualiza automáticamente. Al abrir una página se toma como punto de partida el evento más reciente, evitando mostrar avisos antiguos; el contador de pedidos sigue conservándose aunque cierres la web.

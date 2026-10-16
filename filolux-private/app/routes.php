@@ -1,6 +1,13 @@
 <?php
 declare(strict_types=1);
 $post=$_SERVER['REQUEST_METHOD']==='POST';
+if($path==='/notificaciones' && !$post) {
+    $u=user(); if(!$u) jsonResponse(['error'=>'authentication_required'],401);
+    $raw=$_GET['desde']??'0';
+    if(!is_string($raw) || !preg_match('/^[0-9]{1,18}$/D',$raw)) jsonResponse(['error'=>'invalid_cursor'],422);
+    session_write_close();
+    jsonResponse(liveNotificationFeed($u,(int)$raw));
+}
 require ROOT.'/app/profiles.php';
 if($path==='/cuenta/perfil') return;
 if(str_starts_with($path,'/carrito')) require ROOT.'/app/cart.php';
@@ -120,6 +127,7 @@ if ($path==='/checkout') {
                 if(hasProductColors()) { $columns.=',color'; $values[]=$i['color']; }
                 query('INSERT INTO order_items ('.$columns.') VALUES ('.implode(',',array_fill(0,count($values),'?')).')',$values);
             }
+            notifyLive('order:'.$id,'admin',null,'order_created','Nueva compra · Pedido #'.$id,$name.' registró un pedido por '.money($subtotal+$shipping).'. Pago pendiente de confirmación.','/admin/pedidos/'.$id);
             db()->commit();
         } catch(Throwable $ex) { if(db()->inTransaction()) db()->rollBack(); throw $ex; }
         $_SESSION['cart']=[]; unset($_SESSION['checkout_key']);
@@ -131,11 +139,16 @@ if ($path==='/checkout') {
 if($path==='/cuenta') { $u=requireUser(); render('account',['title'=>'Mi cuenta','orders'=>query('SELECT * FROM orders WHERE user_id=? ORDER BY id DESC LIMIT 100',[$u['id']])->fetchAll()]); return; }
 if(preg_match('#^/pedidos/(\d+)(/pagar)?$#D',$path,$m)) {
     $u=requireUser(); $order=one('SELECT * FROM orders WHERE id=? AND user_id=?',[$m[1],$u['id']]); if(!$order) abortPage(404,'No encontramos ese pedido.');
+    if(empty($m[2]) && !$post && isset($_GET['retorno'])) {
+        Payments::registerReturn($order,$_GET);
+        $order=one('SELECT * FROM orders WHERE id=? AND user_id=?',[$order['id'],$u['id']]);
+    }
     if(!empty($m[2]) && $post) {
         if($order['status']==='cancelado' || in_array($order['payment_status'],['approved','refunded','charged_back'],true)) throw new InvalidArgumentException('Este pedido ya no admite pagos.');
+        if(Payments::waiting($order)) throw new InvalidArgumentException('Estamos verificando un pago de este pedido. Esperá la confirmación antes de volver a pagar.');
         if(!Payments::enabled($order['payment_mode'])) throw new InvalidArgumentException('Los pagos todavía no están habilitados.');
         db()->beginTransaction();
-        try { $order=one('SELECT * FROM orders WHERE id=? FOR UPDATE',[$order['id']]); if($order['status']==='cancelado' || in_array($order['payment_status'],['approved','refunded','charged_back'],true)) throw new InvalidArgumentException('Pedido no disponible para pagar'); $link=Payments::preference($order); db()->commit(); } catch(Throwable $ex) { if(db()->inTransaction()) db()->rollBack(); flash('No pudimos abrir Mercado Pago. Tu pedido sigue guardado; podés intentar nuevamente.'); redirect('/pedidos/'.$order['id']); }
+        try { $order=one('SELECT * FROM orders WHERE id=? FOR UPDATE',[$order['id']]); if($order['status']==='cancelado' || in_array($order['payment_status'],['approved','refunded','charged_back'],true)) throw new InvalidArgumentException('Pedido no disponible para pagar'); if(Payments::waiting($order)) throw new InvalidArgumentException('Ya existe un pago pendiente de confirmación para este pedido.'); $link=Payments::preference($order); db()->commit(); } catch(Throwable $ex) { if(db()->inTransaction()) db()->rollBack(); if($ex instanceof InvalidArgumentException) throw $ex; flash('No pudimos abrir Mercado Pago. Tu pedido sigue guardado; podés intentar nuevamente.'); redirect('/pedidos/'.$order['id']); }
         header('Location: '.$link,true,303); exit;
     }
     render('order',['title'=>'Pedido #'.$order['id'],'order'=>$order,'items'=>query('SELECT * FROM order_items WHERE order_id=?',[$order['id']])->fetchAll()]); return;

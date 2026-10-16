@@ -102,6 +102,7 @@ if(preg_match('#^/admin/pedidos/(\d+)$#D',$path,$m)) {
     $order=one('SELECT * FROM orders WHERE id=?',[$m[1]]); if(!$order) abortPage(404,'Pedido no encontrado.');
     if($post) { $status=textInput('status',30); if(!in_array($status,orderStatuses(),true)) throw new InvalidArgumentException('Estado inválido.'); if(!in_array($status,['pendiente','cancelado'],true) && $order['payment_status']!=='approved') throw new InvalidArgumentException('Confirmá el pago antes de avanzar con la fabricación.'); if($status==='enviado' && $order['delivery']!=='shipping') throw new InvalidArgumentException('Este pedido se retira en el taller.');
         query('UPDATE orders SET status=? WHERE id=?',[$status,$order['id']]); if($status!==$order['status']) sendMail($order['email'],'Tu pedido #'.$order['id'].' está '.$status,'El estado de tu pedido ahora es: '.$status.'. Más información en '.url('/pedidos/'.$order['id'])); flash('Estado actualizado. Cancelar un pedido no reintegra el pago; los reintegros se gestionan en Mercado Pago.'); redirect('/admin/pedidos/'.$order['id']); }
+    if(hasLiveNotifications()) query('UPDATE orders SET admin_reviewed_at=COALESCE(admin_reviewed_at,CURRENT_TIMESTAMP) WHERE id=?',[$order['id']]);
     render('order',['title'=>'Pedido #'.$order['id'],'order'=>$order,'items'=>query('SELECT * FROM order_items WHERE order_id=?',[$order['id']])->fetchAll(),'admin'=>true]); return;
 }
 if($path==='/admin/mensajes') {

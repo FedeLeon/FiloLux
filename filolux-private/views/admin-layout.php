@@ -1,5 +1,6 @@
 <?php
 $pendingMessages=hasContactMessages()?(int)query("SELECT COUNT(*) FROM contact_messages WHERE status='pendiente'")->fetchColumn():0;
+$newOrders=unreadOrderCount();
 $adminLinks=[
     '/admin'=>['Panel','M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z'],
     '/admin/productos'=>['Productos','m12 3 9 5-9 5-9-5 9-5Zm-9 5v9l9 5 9-5V8M12 13v9'],
@@ -20,7 +21,7 @@ $adminLinks=[
         <p class="eyebrow admin-sidebar-caption">TU TALLER DIGITAL</p>
         <nav class="admin-side-nav" aria-label="Administración">
             <?php foreach($adminLinks as $href=>[$label,$icon]): $active=$href==='/admin'?$path===$href:($path===$href || str_starts_with($path,$href.'/')); ?>
-            <a href="<?= e($href) ?>" <?= $active?'aria-current="page"':'' ?>><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="<?= e($icon) ?>"/></svg><span><?= e($label) ?></span><?php if($href==='/admin/mensajes' && $pendingMessages>0): ?><span class="admin-message-badge" role="img" aria-label="<?= $pendingMessages ?> <?= $pendingMessages===1?'mensaje pendiente':'mensajes pendientes' ?>"><?= $pendingMessages ?></span><?php elseif($active): ?><span class="admin-nav-indicator" aria-hidden="true"></span><?php endif ?></a>
+            <a href="<?= e($href) ?>" <?= $active?'aria-current="page"':'' ?>><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="<?= e($icon) ?>"/></svg><span><?= e($label) ?></span><?php if($href==='/admin/pedidos'): ?><span class="admin-message-badge admin-order-badge" data-order-count role="img" aria-label="<?= $newOrders ?> pedidos nuevos sin revisar" <?= $newOrders===0?'hidden':'' ?>><?= $newOrders ?></span><?php endif ?><?php if($href==='/admin/mensajes' && $pendingMessages>0): ?><span class="admin-message-badge" role="img" aria-label="<?= $pendingMessages ?> <?= $pendingMessages===1?'mensaje pendiente':'mensajes pendientes' ?>"><?= $pendingMessages ?></span><?php elseif($active): ?><span class="admin-nav-indicator" aria-hidden="true"></span><?php endif ?></a>
             <?php endforeach ?>
         </nav>
         <div class="admin-sidebar-bottom"><a class="admin-store-link" href="/">Ver mi tienda <span>↗</span></a><div class="admin-profile"><span class="admin-avatar" aria-hidden="true"><?= e(mb_strtoupper(mb_substr(user()['name'],0,1))) ?></span><div><strong><?= e(user()['name']) ?></strong><small>Administrador</small></div></div><form method="post" action="/logout"><?= csrf() ?><button class="admin-logout" type="submit">Cerrar sesión <span>↗</span></button></form></div>
@@ -32,4 +33,5 @@ $adminLinks=[
         <footer class="admin-footer">© <?= date('Y') ?> <?= e($brandName) ?> <span>Ideas que toman forma.</span></footer>
     </div>
 </div>
+<?php require ROOT.'/views/live-notifications.php'; ?>
 </body></html>
