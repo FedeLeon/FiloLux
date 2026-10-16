@@ -120,7 +120,7 @@ function cartItems(): array {
     foreach(($_SESSION['cart']??[]) as $key=>$qty) {
         [$id,$color]=array_pad(explode(':',(string)$key,2),2,'');
         $p=one("SELECT p.*,(SELECT path FROM product_images WHERE product_id=p.id ORDER BY id LIMIT 1) AS image FROM products p WHERE p.id=? AND active=1 AND mode='buy'",[(int)$id]);
-        if(!$p) continue;
+        if(!$p) { unset($_SESSION['cart'][$key],$_SESSION['checkout_key']); continue; }
         $available=productColors($p);
         $p['cart_key']=(string)$key;
         $p['color']=productColorOptions()[$color]??'';
@@ -132,6 +132,16 @@ function cartItems(): array {
 function cartTotal(array $items): int { return array_sum(array_map(fn($p)=>(int)$p['price_cents']*$p['quantity'],$items)); }
 function orderStatuses(): array { return ['pendiente','en fabricación','listo','enviado','entregado','cancelado']; }
 function paymentLabel(string $s): string { return ['pending'=>'Pendiente','approved'=>'Aprobado','in_process'=>'En proceso','rejected'=>'Rechazado','cancelled'=>'Cancelado','refunded'=>'Reintegrado','charged_back'=>'Contracargo','authorized'=>'Autorizado'][$s]??$s; }
+function paymentBadge(string $status): string {
+    $tone=['approved'=>'success','pending'=>'warning','in_process'=>'warning','authorized'=>'info','rejected'=>'danger','cancelled'=>'neutral','refunded'=>'refund','charged_back'=>'danger'][$status]??'neutral';
+    return '<span class="status-badge payment-badge status-'.$tone.'" aria-label="Pago: '.e(paymentLabel($status)).'"><span class="status-dot" aria-hidden="true"></span>Pago: '.e(paymentLabel($status)).'</span>';
+}
+function fabricationBadge(string $status): string {
+    $labels=['pendiente'=>'Pendiente','en fabricación'=>'En fabricación','listo'=>'Listo','enviado'=>'Enviado','entregado'=>'Entregado','cancelado'=>'Cancelado'];
+    $tone=['pendiente'=>'neutral','en fabricación'=>'info','listo'=>'refund','enviado'=>'info','entregado'=>'success','cancelado'=>'danger'][$status]??'neutral';
+    return '<span class="status-badge fabrication-badge status-'.$tone.'">Fabricación: '.e($labels[$status]??$status).'</span>';
+}
+
 function uploadImage(array $file): string {
     if (($file['error']??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_OK) throw new InvalidArgumentException('No se pudo subir la imagen. Máximo 5 MB por archivo.');
     if ($file['size']>5*1024*1024) throw new InvalidArgumentException('La imagen supera 5 MB.');
@@ -144,4 +154,13 @@ function uploadImage(array $file): string {
 function sendMail(string $to,string $subject,string $body): bool {
     if (!setting('smtp_host')) return false;
     try { $m=new PHPMailer\PHPMailer\PHPMailer(true); $m->isSMTP(); $m->Host=setting('smtp_host'); $m->Port=(int)setting('smtp_port','587'); $m->SMTPAuth=setting('smtp_user')!==''; $m->Username=setting('smtp_user'); $m->Password=secret('smtp_password'); $m->SMTPSecure=setting('smtp_security','tls'); $m->Timeout=10; $m->CharSet='UTF-8'; $m->setFrom(setting('smtp_from'),setting('brand','FiloLux')); $m->addAddress($to); $m->Subject=$subject; $m->Body=$body; $m->send(); return true; } catch (Throwable $ex) { error_log('FiloLux: fallo de envío SMTP (sin datos sensibles).'); return false; }
+}
+
+function hasProductDeletion(): bool {
+    static $available;
+    return $available ??= (bool)query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='products' AND COLUMN_NAME='deleted_at'")->fetchColumn();
+}
+function hasOrderDeletion(): bool {
+    static $available;
+    return $available ??= (bool)query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='orders' AND COLUMN_NAME='admin_deleted_at'")->fetchColumn();
 }

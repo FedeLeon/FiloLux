@@ -129,7 +129,13 @@ final class Payments {
             $latest=one("SELECT status FROM payments WHERE order_id=? ORDER BY FIELD(status,'approved','charged_back','refunded','authorized','in_process','pending','rejected','cancelled'), id DESC LIMIT 1",[$o['id']]);
             $new=$latest['status'];
             query('UPDATE orders SET payment_status=? WHERE id=?',[$new,$o['id']]);
-            notifyLive('payment:'.$mode.':'.$pid.':'.$status.':admin','admin',null,'payment_update','Pago actualizado · Pedido #'.$o['id'],'Mercado Pago: '.paymentLabel($status).'. Importe: '.money($amount).'.','/admin/pedidos/'.$o['id']);
+            // A payment already in flight may settle after the order was removed.
+            // Restore a newly paid order so fulfillment cannot be lost from the panel.
+            if(!empty($o['admin_deleted_at']) && $new==='approved' && $o['payment_status']!=='approved') {
+                query('UPDATE orders SET admin_deleted_at=NULL'.(hasLiveNotifications()?',admin_reviewed_at=NULL':'').' WHERE id=?',[$o['id']]);
+                $o['admin_deleted_at']=null;
+            }
+            if(empty($o['admin_deleted_at'])) notifyLive('payment:'.$mode.':'.$pid.':'.$status.':admin','admin',null,'payment_update','Pago actualizado · Pedido #'.$o['id'],'Mercado Pago: '.paymentLabel($status).'. Importe: '.money($amount).'.','/admin/pedidos/'.$o['id']);
             if($new!==$o['payment_status'] || (!$existing && $status===$new)) notifyLive('payment:'.$mode.':'.$pid.':'.$status.':customer','customer',(int)$o['user_id'],'payment_update','Tu pago del pedido #'.$o['id'],'Estado del pago: '.paymentLabel($new).'.','/pedidos/'.$o['id']);
             db()->commit();
             return $new!==$o['payment_status'];

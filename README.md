@@ -254,3 +254,11 @@ En el detalle del pedido, “Verificar mi pago” consulta el pago desde el serv
 Para cuentas de prueba que operan con credenciales de la API productiva, `live_mode=true` solo se acepta en pedidos de prueba si la API identifica al vendedor o al comprador mediante la etiqueta `test_user`. No se deduce del prefijo del token, del correo ni de los datos del navegador. Si no se puede verificar la cuenta, se conserva el bloqueo. Una cuenta vendedora de prueba no se acredita en pedidos de producción. Cuando una firma corresponde a ambos secretos configurados, se elige el entorno que coincide con el pedido consultado.
 
 Los clientes ven el código del pago y su estado. Las referencias de integración, medios de pago y demás datos técnicos se muestran únicamente a administradores. El estado de fabricación se etiqueta por separado para distinguirlo del estado del pago.
+
+### Eliminar productos y pedidos del administrador
+
+Antes del deploy, importá `filolux-private/database/migrations/2026-10-16-admin-deletion.sql` en phpMyAdmin. Es repetible y conserva los registros existentes. Se agrega una papelera roja en la edición de productos y en el listado y detalle de pedidos del administrador, con confirmación antes de enviar.
+
+Eliminar un producto lo retira del catálogo, carrito y listado del admin; sus datos y fotos se conservan para mantener el historial. Eliminar un pedido lo quita del panel, contadores y avisos del admin. El cliente conserva su historial y los pagos siguen conciliándose por webhook. La eliminación no cancela el pedido, no reintegra pagos ni borra los comprobantes. Los endpoints requieren rol administrador, POST y CSRF.
+
+Los pedidos retirados del panel no admiten nuevos intentos de cobro. Si un pago que ya estaba en curso se aprueba después de la eliminación, el pedido reaparece automáticamente como nuevo en el admin para que no se pierda su fabricación. Las actualizaciones posteriores de pagos ya aprobados conservan los comprobantes sin volver a mostrar el pedido eliminado.

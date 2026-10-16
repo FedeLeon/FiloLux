@@ -160,11 +160,11 @@ if(preg_match('#^/pedidos/(\d+)(/pagar|/verificar)?$#D',$path,$m)) {
         redirect('/pedidos/'.$order['id']);
     }
     if(($m[2]??'')==='/pagar' && $post) {
-        if($order['status']==='cancelado' || in_array($order['payment_status'],['approved','refunded','charged_back'],true)) throw new InvalidArgumentException('Este pedido ya no admite pagos.');
+        if(!empty($order['admin_deleted_at']) || $order['status']==='cancelado' || in_array($order['payment_status'],['approved','refunded','charged_back'],true)) throw new InvalidArgumentException('Este pedido ya no admite pagos.');
         if(Payments::waiting($order)) throw new InvalidArgumentException('Estamos verificando un pago de este pedido. Esperá la confirmación antes de volver a pagar.');
         if(!Payments::enabled($order['payment_mode'])) throw new InvalidArgumentException('Los pagos todavía no están habilitados.');
         db()->beginTransaction();
-        try { $order=one('SELECT * FROM orders WHERE id=? FOR UPDATE',[$order['id']]); if($order['status']==='cancelado' || in_array($order['payment_status'],['approved','refunded','charged_back'],true)) throw new InvalidArgumentException('Pedido no disponible para pagar'); if(Payments::waiting($order)) throw new InvalidArgumentException('Ya existe un pago pendiente de confirmación para este pedido.'); $link=Payments::preference($order); db()->commit(); } catch(Throwable $ex) { if(db()->inTransaction()) db()->rollBack(); if($ex instanceof InvalidArgumentException) throw $ex; flash('No pudimos abrir Mercado Pago. Tu pedido sigue guardado; podés intentar nuevamente.'); redirect('/pedidos/'.$order['id']); }
+        try { $order=one('SELECT * FROM orders WHERE id=? FOR UPDATE',[$order['id']]); if(!empty($order['admin_deleted_at']) || $order['status']==='cancelado' || in_array($order['payment_status'],['approved','refunded','charged_back'],true)) throw new InvalidArgumentException('Pedido no disponible para pagar'); if(Payments::waiting($order)) throw new InvalidArgumentException('Ya existe un pago pendiente de confirmación para este pedido.'); $link=Payments::preference($order); db()->commit(); } catch(Throwable $ex) { if(db()->inTransaction()) db()->rollBack(); if($ex instanceof InvalidArgumentException) throw $ex; flash('No pudimos abrir Mercado Pago. Tu pedido sigue guardado; podés intentar nuevamente.'); redirect('/pedidos/'.$order['id']); }
         header('Location: '.$link,true,303); exit;
     }
     render('order',['title'=>'Pedido #'.$order['id'],'order'=>$order,'items'=>query('SELECT * FROM order_items WHERE order_id=?',[$order['id']])->fetchAll()]); return;

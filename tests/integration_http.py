@@ -68,7 +68,7 @@ try:
     r=post(admin,'/admin/pedidos/'+str(order_id),{'status':'en fabricación'},t); check(r.status_code==422,'no fabricar pedidos impagos')
     fixture('approve',order_id)
     r=post(admin,'/admin/pedidos/'+str(order_id),{'status':'en fabricación'},t); check(r.status_code==303,'avanzar fabricación de pedido pagado')
-    check('en fabricación' in get(a,path).text,'cliente ve avance del pedido')
+    check('fabricación: en fabricación' in get(a,path).text.lower(),'cliente ve avance del pedido')
     check(guest.post(BASE+'/webhook/mercadopago?data.id=123',headers={'X-Signature':'ts=1,v1=bad'}).status_code==401,'webhook rechaza firma inválida')
     # Restore seed product for preview and subsequent runs.
     data_product.update(price='24500.00',lead_time='7 a 10 días hábiles')

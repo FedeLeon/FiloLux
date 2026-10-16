@@ -435,3 +435,28 @@ h1 em,h2 em,h3 em,h4 em,h5 em,h6 em{font-weight:inherit}
 .account-chevron,.account-menu-icon{display:block;flex-shrink:0}
 
 .checkout-layout .form-panel p{overflow-wrap:anywhere}
+/* Payment and fabrication remain explicitly named and use semantic colors. */
+.status-badge{--status-color:#b5ad9f;--status-bg:#b5ad9f14;--status-border:#b5ad9f50;display:inline-flex;align-items:center;justify-content:flex-start;gap:8px;max-width:100%;width:fit-content;padding:6px 11px;border:1px solid var(--status-border);border-radius:999px;background:var(--status-bg);color:var(--status-color);font-size:12px;font-weight:700;line-height:1.5;vertical-align:middle}
+.status-dot{display:inline-block;width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:var(--status-color)}
+.status-success{--status-color:#8ae0ac;--status-bg:#37b87518;--status-border:#54c88960}
+.status-warning{--status-color:#f1c66e;--status-bg:#e9a93618;--status-border:#d4ac5c70}
+.status-danger{--status-color:#ffaaaa;--status-bg:#e85d5d18;--status-border:#e9757560}
+.status-info{--status-color:#a1caff;--status-bg:#669fee18;--status-border:#72a6ec60}
+.status-refund{--status-color:#d7b5ff;--status-bg:#af7ce318;--status-border:#bc91e760}
+html[data-theme="light"] .status-neutral{--status-color:#605747;--status-bg:#6057470c;--status-border:#60574745}
+html[data-theme="light"] .status-success{--status-color:#17623a;--status-bg:#25895510;--status-border:#25895560}
+html[data-theme="light"] .status-warning{--status-color:#795000;--status-bg:#c18c1914;--status-border:#a77a2960}
+html[data-theme="light"] .status-danger{--status-color:#a12b2b;--status-bg:#b8313110;--status-border:#b8313155}
+html[data-theme="light"] .status-info{--status-color:#245d9f;--status-bg:#3978bf10;--status-border:#3978bf55}
+html[data-theme="light"] .status-refund{--status-color:#7242a2;--status-bg:#8652b410;--status-border:#8652b455}
+.order-row .status-badge{justify-self:start;white-space:normal;overflow-wrap:anywhere}
+.fabrication-badge{font-weight:400}
+@media(max-width:720px){.order-row{grid-template-columns:minmax(0,1fr) auto}.order-row .status-badge{grid-column:1 / -1}}
+.admin-row-actions,.order-heading-actions{display:flex;align-items:center;gap:16px}
+.admin-row-actions form,.order-heading-actions form{margin:0}
+.admin-delete-button{flex-shrink:0}
+.order-heading-actions{flex-wrap:wrap}
+
+.admin-order-number{display:inline-flex;align-items:center;gap:8px}
+.admin-order-unread{display:inline-block;width:8px;height:8px;border-radius:50%;background:#ef7474;flex-shrink:0}
+html[data-theme="light"] .admin-order-unread{background:#b42318}

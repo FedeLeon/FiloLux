@@ -37,10 +37,16 @@ try:
     # Re-importing a migration must not mark new orders as reviewed.
     sql("db()->exec(file_get_contents(ROOT.'/database/migrations/2026-10-16-live-notifications.sql'));")
     assert feed(admin,cursor)['orders']==initial['orders']+1
-    assert 'data-order-count' in admin.get(BASE+'/admin/pedidos').text
+    listing=admin.get(BASE+'/admin/pedidos').text
+    assert 'data-order-count' in listing
+    assert re.search(r'admin-order-number[^>]*>#'+str(oid)+r'<span class="admin-order-unread"',listing)
+    assert 'admin-order-unread' in admin.get(BASE+'/admin').text
+    assert 'admin-order-unread' not in buyer.get(BASE+'/cuenta').text
     assert feed(admin,cursor)['orders']==initial['orders']+1
     assert admin.get(BASE+'/admin/pedidos/'+str(oid)).status_code==200
     assert feed(admin,cursor)['orders']==initial['orders']
+    listing=admin.get(BASE+'/admin/pedidos').text
+    assert re.search(r'admin-order-number[^>]*>#'+str(oid)+r'</span>',listing)
     order=json.loads(sql('echo json_encode(one("SELECT * FROM orders WHERE id=?",['+str(oid)+']));'))
     payment={'id':'990880001','external_reference':str(oid),'transaction_amount':order['total_cents']/100,'currency_id':'ARS','collector_id':555,'live_mode':False,'status':'approved'}
     def reconcile(p):return sql('echo (int)Payments::reconcile(json_decode('+json.dumps(json.dumps(p))+',true),"test",555);')

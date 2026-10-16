@@ -1,6 +1,21 @@
 <?php
 declare(strict_types=1);
 if($path==='/admin/visitas' || str_starts_with($path,'/admin/visitas/')) { require ROOT.'/app/admin-visits.php'; return; }
+if(preg_match('#^/admin/(productos|pedidos)/(\d+)/eliminar$#D',$path,$m) && $post) {
+    $isProduct=$m[1]==='productos'; $id=(int)$m[2];
+    if($isProduct?!hasProductDeletion():!hasOrderDeletion()) throw new InvalidArgumentException('Importá primero la migración de eliminación del administrador.');
+    db()->beginTransaction();
+    try {
+        $table=$isProduct?'products':'orders';
+        $record=one('SELECT id FROM '.$table.' WHERE id=? FOR UPDATE',[$id]);
+        if(!$record) { db()->rollBack(); abortPage(404,'No encontramos ese registro.'); }
+        if($isProduct) query('UPDATE products SET active=0,deleted_at=COALESCE(deleted_at,CURRENT_TIMESTAMP) WHERE id=?',[$id]);
+        else query('UPDATE orders SET admin_deleted_at=COALESCE(admin_deleted_at,CURRENT_TIMESTAMP) WHERE id=?',[$id]);
+        db()->commit();
+    } catch(Throwable $ex) { if(db()->inTransaction()) db()->rollBack(); throw $ex; }
+    flash($isProduct?'Producto eliminado del catálogo. Los pedidos anteriores conservan sus datos.':'Pedido eliminado del panel. Sus pagos y el historial del cliente se conservaron.');
+    redirect($isProduct?'/admin/productos':'/admin/pedidos');
+}
 if($path==='/admin/usuarios') {
     $search=is_string($_GET['q']??null)?mb_substr(trim($_GET['q']),0,100):'';
     $where="u.role='customer'"; $args=[];
@@ -12,13 +27,15 @@ if($path==='/admin/usuarios') {
     render('admin-users',['title'=>'Usuarios registrados','customers'=>$customers,'search'=>$search,'total'=>$total,'page'=>$page]); return;
 }
 if($path==='/admin') {
-    render('admin-dashboard',['title'=>'Tu taller, en un solo lugar','counts'=>['products'=>(int)query('SELECT COUNT(*) FROM products')->fetchColumn(),'orders'=>(int)query('SELECT COUNT(*) FROM orders')->fetchColumn(),'pending'=>(int)query("SELECT COUNT(*) FROM orders WHERE payment_status='approved' AND status IN ('pendiente','en fabricación')")->fetchColumn()],'orders'=>query('SELECT * FROM orders ORDER BY id DESC LIMIT 8')->fetchAll()]); return;
+    $productFilter=hasProductDeletion()?' WHERE deleted_at IS NULL':'';
+    $orderFilter=hasOrderDeletion()?' WHERE admin_deleted_at IS NULL':'';
+    render('admin-dashboard',['title'=>'Tu taller, en un solo lugar','counts'=>['products'=>(int)query('SELECT COUNT(*) FROM products'.$productFilter)->fetchColumn(),'orders'=>(int)query('SELECT COUNT(*) FROM orders'.$orderFilter)->fetchColumn(),'pending'=>(int)query("SELECT COUNT(*) FROM orders WHERE ".(hasOrderDeletion()?'admin_deleted_at IS NULL AND ':'')."payment_status='approved' AND status IN ('pendiente','en fabricación')")->fetchColumn()],'orders'=>query('SELECT * FROM orders'.$orderFilter.' ORDER BY id DESC LIMIT 8')->fetchAll()]); return;
 }
 if($path==='/admin/productos') {
     $rawCategory=is_string($_GET['categoria']??null)?$_GET['categoria']:'';
     $selectedCategory=$rawCategory==='sin_categoria'?'sin_categoria':(ctype_digit($rawCategory)?max(0,(int)$rawCategory):0);
     $search=is_string($_GET['q']??null)?mb_substr(trim($_GET['q']),0,100):'';
-    $conditions=[]; $args=[];
+    $conditions=hasProductDeletion()?['p.deleted_at IS NULL']:[]; $args=[];
     if($selectedCategory==='sin_categoria') $conditions[]='NOT EXISTS (SELECT 1 FROM categories c WHERE '.productCategoryMembershipSql().')';
     elseif($selectedCategory>0) { $conditions[]='EXISTS (SELECT 1 FROM categories c WHERE c.id=? AND '.productCategoryMembershipSql().')'; $args[]=$selectedCategory; }
     if($search!=='') {
@@ -36,7 +53,7 @@ if($path==='/admin/productos') {
     ]); return;
 }
 if(preg_match('#^/admin/productos/(nuevo|\d+)$#D',$path,$m)) {
-    $id=$m[1]==='nuevo'?0:(int)$m[1]; $product=$id?one('SELECT * FROM products WHERE id=?',[$id]):['name'=>'','description'=>'','dimensions'=>'','category_id'=>'','price_cents'=>0,'lead_time'=>'7 a 10 días hábiles','mode'=>'buy','active'=>1,'featured'=>0]; if(!$product) abortPage(404,'Producto no encontrado.');
+    $id=$m[1]==='nuevo'?0:(int)$m[1]; $product=$id?one('SELECT * FROM products WHERE id=?',[$id]):['name'=>'','description'=>'','dimensions'=>'','category_id'=>'','price_cents'=>0,'lead_time'=>'7 a 10 días hábiles','mode'=>'buy','active'=>1,'featured'=>0]; if(!$product || !empty($product['deleted_at'])) abortPage(404,'Producto no encontrado.');
     $selectedCategories=$id?productCategoryIds($id):[];
     $selectedColors=productColors($product);
     $error='';
@@ -76,7 +93,9 @@ if(preg_match('#^/admin/productos/(nuevo|\d+)$#D',$path,$m)) {
             $remain=count(array_filter($existing,fn($i)=>!in_array((int)$i['id'],$delete,true)));
             if($count+$remain>8) throw new InvalidArgumentException('Podés guardar hasta 8 fotos por producto.');
             if($files && is_array($files['name'])) foreach($files['name'] as $i=>$fn) if($files['error'][$i]!==UPLOAD_ERR_NO_FILE) $uploaded[]=uploadImage(['name'=>$fn,'tmp_name'=>$files['tmp_name'][$i],'error'=>$files['error'][$i],'size'=>$files['size'][$i]]);
-            db()->beginTransaction(); $args=[$cat?:null,$name,$description,$dimensions,$price,$lead,$mode,isset($_POST['active'])?1:0,isset($_POST['featured'])?1:0];
+            db()->beginTransaction();
+            if($id) { $current=one('SELECT * FROM products WHERE id=? FOR UPDATE',[$id]); if(!$current || !empty($current['deleted_at'])) throw new InvalidArgumentException('El producto fue eliminado.'); }
+            $args=[$cat?:null,$name,$description,$dimensions,$price,$lead,$mode,isset($_POST['active'])?1:0,isset($_POST['featured'])?1:0];
             if($id) { $args[]=$id; query('UPDATE products SET category_id=?,name=?,description=?,dimensions=?,price_cents=?,lead_time=?,mode=?,active=?,featured=? WHERE id=?',$args); }
             else { query('INSERT INTO products (category_id,name,description,dimensions,price_cents,lead_time,mode,active,featured) VALUES (?,?,?,?,?,?,?,?,?)',$args); $id=(int)db()->lastInsertId(); }
             if(hasProductColors()) query('UPDATE products SET available_colors=? WHERE id=?',[json_encode($selectedColors),$id]);
@@ -97,9 +116,9 @@ if($path==='/admin/categorias') {
     $error=''; if($post) { try { $id=(int)($_POST['id']??0); if(isset($_POST['delete'])) query('DELETE FROM categories WHERE id=?',[$id]); else { $name=textInput('name',100); if(one('SELECT id FROM categories WHERE name=? AND id<>?',[$name,$id])) throw new InvalidArgumentException('Ya existe esa categoría.'); if($id) query('UPDATE categories SET name=? WHERE id=?',[$name,$id]); else query('INSERT INTO categories (name) VALUES (?)',[$name]); } flash('Categorías actualizadas.'); redirect('/admin/categorias'); } catch(InvalidArgumentException $ex) { $error=$ex->getMessage(); } }
     render('admin-categories',['title'=>'Categorías','categories'=>query('SELECT * FROM categories ORDER BY name')->fetchAll(),'error'=>$error]); return;
 }
-if($path==='/admin/pedidos') { $where=''; $args=[]; $status=(string)($_GET['status']??''); if(in_array($status,orderStatuses(),true)) { $where=' WHERE status=?'; $args[]=$status; } render('admin-orders',['title'=>'Pedidos','orders'=>query('SELECT * FROM orders'.$where.' ORDER BY id DESC LIMIT 200',$args)->fetchAll()]); return; }
+if($path==='/admin/pedidos') { $conditions=hasOrderDeletion()?['admin_deleted_at IS NULL']:[]; $args=[]; $status=(string)($_GET['status']??''); if(in_array($status,orderStatuses(),true)) { $conditions[]='status=?'; $args[]=$status; } $where=$conditions?' WHERE '.implode(' AND ',$conditions):''; render('admin-orders',['title'=>'Pedidos','orders'=>query('SELECT * FROM orders'.$where.' ORDER BY id DESC LIMIT 200',$args)->fetchAll()]); return; }
 if(preg_match('#^/admin/pedidos/(\d+)$#D',$path,$m)) {
-    $order=one('SELECT * FROM orders WHERE id=?',[$m[1]]); if(!$order) abortPage(404,'Pedido no encontrado.');
+    $order=one('SELECT * FROM orders WHERE id=?',[$m[1]]); if(!$order || !empty($order['admin_deleted_at'])) abortPage(404,'Pedido no encontrado.');
     if($post) { $status=textInput('status',30); if(!in_array($status,orderStatuses(),true)) throw new InvalidArgumentException('Estado inválido.'); if(!in_array($status,['pendiente','cancelado'],true) && $order['payment_status']!=='approved') throw new InvalidArgumentException('Confirmá el pago antes de avanzar con la fabricación.'); if($status==='enviado' && $order['delivery']!=='shipping') throw new InvalidArgumentException('Este pedido se retira en el taller.');
         query('UPDATE orders SET status=? WHERE id=?',[$status,$order['id']]); if($status!==$order['status']) sendMail($order['email'],'Tu pedido #'.$order['id'].' está '.$status,'El estado de tu pedido ahora es: '.$status.'. Más información en '.url('/pedidos/'.$order['id'])); flash('Estado actualizado. Cancelar un pedido no reintegra el pago; los reintegros se gestionan en Mercado Pago.'); redirect('/admin/pedidos/'.$order['id']); }
     if(hasLiveNotifications()) query('UPDATE orders SET admin_reviewed_at=COALESCE(admin_reviewed_at,CURRENT_TIMESTAMP) WHERE id=?',[$order['id']]);
