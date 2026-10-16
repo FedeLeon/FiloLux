@@ -24,6 +24,7 @@ try {
     exit('El sitio todavía no está configurado.');
 }
 $path=rawurldecode(parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH)?:'/');
+require ROOT.'/app/visits.php';
 try {
     if ($path==='/webhook/mercadopago') { require ROOT.'/app/webhook.php'; exit; }
     if ($_SERVER['REQUEST_METHOD']==='POST' && !hash_equals($_SESSION['csrf'],(string)($_POST['_csrf']??''))) abortPage(419,'La sesión del formulario venció. Recargá la página e intentá otra vez.');

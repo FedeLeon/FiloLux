@@ -1,4 +1,29 @@
 'use strict';
+// Resolve pending IP locations from the admin, without delaying storefront requests.
+(() => {
+  const form = document.querySelector('[data-visit-geolocation]');
+  if (!form || !window.fetch) return;
+  const button = form.querySelector('button');
+  const status = form.querySelector('[data-location-status]');
+  let busy = false;
+  const update = async () => {
+    if (busy) return;
+    busy = true; button.disabled = true; status.textContent = 'Consultando ubicaciones…';
+    try {
+      const response = await fetch(form.action, {method:'POST',body:new FormData(form),headers:{Accept:'application/json'}});
+      if (!response.ok) throw new Error('location');
+      const data = await response.json();
+      if (!data.locations || typeof data.locations !== 'object') throw new Error('location');
+      document.querySelectorAll('[data-visit-location]').forEach(label => {
+        if (Object.hasOwn(data.locations, label.dataset.ip)) label.textContent = data.locations[label.dataset.ip];
+      });
+      status.textContent = Object.keys(data.locations).length ? 'Consulta terminada. Podés actualizar otra tanda si quedan ubicaciones pendientes.' : 'No hay ubicaciones pendientes de consulta.';
+    } catch (_) { status.textContent = 'No pudimos actualizar las ubicaciones. Intentá nuevamente.'; }
+    finally { busy = false; button.disabled = false; }
+  };
+  form.addEventListener('submit', event => { event.preventDefault(); update(); });
+  update();
+})();
 // Keep newly chosen photos editable before the native multipart form is saved.
 (() => {
   const input = document.querySelector('[data-product-photo-input]');

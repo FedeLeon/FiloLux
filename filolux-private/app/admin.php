@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+if($path==='/admin/visitas' || str_starts_with($path,'/admin/visitas/')) { require ROOT.'/app/admin-visits.php'; return; }
 if($path==='/admin') {
     render('admin-dashboard',['title'=>'Tu taller, en un solo lugar','counts'=>['products'=>(int)query('SELECT COUNT(*) FROM products')->fetchColumn(),'orders'=>(int)query('SELECT COUNT(*) FROM orders')->fetchColumn(),'pending'=>(int)query("SELECT COUNT(*) FROM orders WHERE payment_status='approved' AND status IN ('pendiente','en fabricación')")->fetchColumn()],'orders'=>query('SELECT * FROM orders ORDER BY id DESC LIMIT 8')->fetchAll()]); return;
 }

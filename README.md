@@ -125,6 +125,18 @@ Las categorías se muestran como botones y conservan la búsqueda y el orden ele
 
 El menú se muestra en una columna lateral izquierda, con la sección actual resaltada. En celular se abre con el botón de menú. La lista de productos muestra una miniatura de la primera foto o el isotipo de FiloLux si no hay fotos. Permite buscar por nombre, descripción o medidas y combinar la búsqueda con los botones por categoría, todas las categorías o sin categoría; incluye tanto productos publicados como ocultos. Los botones conservan la búsqueda y «Limpiar» quita los filtros.
 
+### Visitas y actividad de la tienda
+
+En **Admin → Visitas** (`/admin/visitas`) se muestran IP, ubicación aproximada, dispositivo, navegador, sistema operativo, inicio y última actividad. Podés filtrar por fechas, dispositivo, IP y visitas que agregaron productos al carrito. **Ver recorrido** muestra los últimos 200 eventos: páginas abiertas, productos vistos y unidades agregadas o quitadas. El resumen incluye visitas, páginas vistas, visitas con carrito y los diez productos más explorados del período filtrado. Los horarios se muestran en Argentina (UTC−3).
+
+Para actualizar una tienda existente, importá primero **`filolux-private/database/migrations/2026-10-15-site-visits.sql`** en phpMyAdmin. Es repetible y solo crea las tres tablas de analítica. Luego subí `app/visits.php`, `app/admin-visits.php`, `app/bootstrap.php`, `app/core.php`, `app/routes.php`, `app/admin.php`, las vistas `admin-layout.php`, `admin-visits.php`, `admin-visit.php`, `privacy.php`, `layout.php`, y `public/assets/app.js` y `app.css`, respetando las carpetas privadas y públicas. Conservá `config.php`, `.env` y las fotos. No importes nuevamente el SQL inicial. El deploy automático no ejecuta migraciones; la aplicación continúa funcionando si falta esta migración y el panel indica cómo instalarla. La base local ya puede actualizarse con el mismo archivo.
+
+El registro funciona en el servidor, incluso sin JavaScript; no cuenta assets, errores, consultas AJAX del resumen del carrito, pantallas de acceso, cuentas, pedidos ni actividad del administrador conectado. Una visita agrupa una sesión hasta 30 minutos de inactividad; un cambio de IP o navegador inicia otra. Una IP no representa necesariamente una persona. Los bots se identifican de forma orientativa por su User-Agent y pueden filtrarse. Las vistas indican aperturas de páginas; no miden lectura ni duración exacta. Solo los cambios efectivos del carrito se registran: los intentos rechazados y agregar por encima del límite no suman unidades.
+
+La geolocalización usa [GeoJS](https://www.geojs.io/docs/v1/endpoints/geo/) por HTTPS desde el servidor. Al abrir Visitas, JavaScript consulta en segundo plano hasta diez IP pendientes; el botón **Actualizar ubicaciones** permite otra tanda y también funciona sin JavaScript. Se envía únicamente la IP pública, sin nombres, productos ni recorrido. Las IP privadas/locales no se envían; en desarrollo muestran «IP local o privada». Las respuestas se guardan por IP, y las consultas fallidas se reintentan después de seis horas. Una falla de geolocalización no interrumpe la tienda ni pierde su historial. La ciudad o región pueden no estar disponibles y las VPN o redes móviles pueden producir ubicaciones distintas de las reales. No requiere claves ni GPS; utiliza la conexión HTTPS saliente de PHP/cURL.
+
+La IP se toma de `REMOTE_ADDR`; no se confía en cabeceras `X-Forwarded-For` ni `CF-Connecting-IP` enviadas por clientes. Si usás un proxy/CDN, configurá en el servidor la restauración de la IP real **solo desde proxies de confianza**; de lo contrario se registrará la IP del proxy. No se crea una cookie adicional ni se vincula el historial al nombre del cliente. Se almacenan las rutas sin parámetros de consulta, sin datos de formularios ni credenciales. El aviso público está en `/privacidad`, enlazado desde el pie de la tienda. Al abrir el panel se eliminan hasta mil eventos y visitas de más de 90 días por tanda; si hay muchos registros antiguos, abrirlo de nuevo continúa la limpieza. No hay reconstrucción de visitas anteriores a la instalación.
+
 - **Productos:** hasta ocho fotos, precio, categorías, medidas opcionales, plazo y publicación. Al seleccionar fotos nuevas se muestra una vista previa con una papelera roja para quitar cada archivo antes de guardar; podés agregar más fotos conservando las ya elegidas. Los archivos se envían recién al guardar el producto. Ocultar retira el producto del catálogo y de nuevos carritos sin afectar pedidos anteriores. La primera foto conservada es la portada.
 - **Modalidad:** compra directa con precio positivo o consulta personalizada por WhatsApp. Los personalizados no se agregan al carrito.
 - **Pedidos:** pago y fabricación son independientes. Solo se permite avanzar fabricación con pago aprobado. Retiro gratuito o envío con tarifa única. Los costos de entrega se guardan al confirmar el pedido.
@@ -187,6 +199,7 @@ python3 tests/product_details.py
 python3 tests/multiple_categories.py
 python3 tests/contact_messages.py
 python3 tests/cart_ajax.py
+python3 tests/visits.py
 python3 tests/admin_auth.py
 python3 tests/integration_http.py
 python3 tests/admin_settings.py
@@ -195,6 +208,7 @@ python3 tests/deploy_hostinger.py # rsync local; no se conecta a Hostinger
 node tests/browser.cjs
 node tests/mobile_layout.cjs
 node tests/photo_preview.cjs
+node tests/visits_browser.cjs
 ```
 
 Playwright acepta `FILOLUX_PLAYWRIGHT` con la ruta del módulo y `FILOLUX_CHROMIUM` con la ruta del navegador. Las capturas quedan en `tests/.runtime/`. `tests/mail.py` y `tests/manual_deploy.py` verifican SMTP/recuperación con TLS local y el despliegue manual de las carpetas en una base vacía; sus instrucciones están en sus cabeceras.

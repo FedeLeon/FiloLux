@@ -279,22 +279,36 @@ h1 em,h2 em,h3 em,h4 em,h5 em,h6 em{font-weight:inherit}
 
 .mini-mark>.brand-symbol{display:block;width:24px;height:24px;vertical-align:initial}
 
+.visit-filters{display:flex;flex-wrap:wrap;align-items:end;gap:16px;margin-bottom:25px}
+.visit-filters>label{flex:1 1 160px;margin:0;min-width:0}
+.visit-filters>.check{flex:1 1 190px;align-self:center}
+.visit-location-form{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-block:22px}
+.visit-location-form [role=status]{font-size:13px;color:var(--muted);flex:1 1 200px}
+.visit-card{overflow-wrap:anywhere}
+.visit-card p{margin-bottom:12px}
+.visit-ip{font-weight:700;color:var(--ink)}
+.visit-products-heading{margin-top:36px}
+.visit-timeline{list-style:none;padding:0;display:grid;gap:16px}
+.visit-timeline .form-panel{margin:0;min-width:0;overflow-wrap:anywhere}
+.visit-timeline time{display:block;color:var(--muted);font-size:13px;margin-bottom:12px}
+.visit-timeline h3{margin-bottom:8px}
+
 /* Large brand presentation replaces the laser illustration on the home page. */
 .hero-art.hero-brand{display:flex;align-items:center;justify-content:center;padding:clamp(24px,4vw,52px);background:transparent;border:0;border-radius:0;width:100%;min-width:0}
 .hero-brand .brand-wordmark{width:100%;max-width:100%}
 .hero-brand .brand-logo,.hero-brand .brand-upload{width:100%;height:auto;max-width:100%;max-height:none;object-fit:contain}
 
-/* Read the introduction in order: specialty, animated logo, title and details. */
-.hero{grid-template-columns:minmax(0,1fr);row-gap:0}
+/* Desktop keeps the wordmark beside the heading; mobile follows document order. */
+.hero{row-gap:0}
 .hero-copy{display:contents}
 .hero-copy>*{grid-column:1}
 .hero h1{margin-bottom:0}
 .hero-description{margin-top:28px}
 .hero h1>span{display:block}
-.hero-art.hero-brand{grid-column:1;grid-row:auto;justify-self:start;aspect-ratio:5/3;max-width:560px;margin:0 0 28px;padding-block:0}
+.hero-art.hero-brand{grid-column:2;grid-row:2;align-self:center;aspect-ratio:auto;margin:0;padding-block:0}
 @media(max-width:720px){
  .hero h1{font-size:clamp(30px,8.8vw,60px)}
- .hero-art.hero-brand{max-width:420px}
+ .hero-art.hero-brand{grid-column:1;grid-row:auto;aspect-ratio:5/3;max-width:420px;margin:0 0 28px}
 }
 
 /* Decorative technology rings stay behind the wordmark and never intercept clicks. */
@@ -322,8 +336,9 @@ h1 em,h2 em,h3 em,h4 em,h5 em,h6 em{font-weight:inherit}
 .custom-art .orbit::before{left:-4px}
 .custom-art .orbit::after{right:-4px;width:4px;height:4px}
 
-.hero-art.hero-brand{padding-inline:clamp(18px,2.5vw,32px)}
+.hero-art.hero-brand{padding-inline:clamp(18px,2.5vw,32px);transform:translateY(24px)}
 @media(max-width:720px){
+ .hero-art.hero-brand{transform:none}
  /* Reserve the rings' full height so they stay inside the hero section. */
  .hero-tech-rings{width:100%;max-height:100%}
  .custom-section h2{font-size:clamp(32px,8vw,43px)}

@@ -58,18 +58,36 @@ if (preg_match('#^/producto/(\d+)$#D',$path,$m)) {
     render('product',['title'=>$product['name'],'product'=>$product,'images'=>query('SELECT * FROM product_images WHERE product_id=? ORDER BY id',[$m[1]])->fetchAll(),'suggested'=>$suggested]); return;
 }
 if ($path==='/contacto') { render('contact',['title'=>'Hablemos de tu próxima idea']); return; }
+if ($path==='/privacidad' && !$post) { render('privacy',['title'=>'Privacidad']); return; }
 if ($path==='/carrito/agregar' && $post) {
     $p=one("SELECT * FROM products WHERE id=? AND active=1 AND mode='buy'",[(int)($_POST['product_id']??0)]); if(!$p) abortPage(404,'Este producto no está disponible para comprar.');
-    $_SESSION['cart'][$p['id']]=min(99,($_SESSION['cart'][$p['id']]??0)+max(1,min(99,(int)($_POST['quantity']??1)))); unset($_SESSION['checkout_key']); if(wantsJson()) jsonResponse(cartPayload('Agregaste '.$p['name'].' al carrito.',(int)$p['id'])); flash('Agregamos la pieza a tu carrito.'); redirect('/carrito');
+    $before=(int)($_SESSION['cart'][$p['id']]??0);
+    $_SESSION['cart'][$p['id']]=min(99,$before+max(1,min(99,(int)($_POST['quantity']??1))));
+    $added=$_SESSION['cart'][$p['id']]-$before;
+    if($added>0) recordVisitEvent('cart_add',$path,$p,$added);
+    unset($_SESSION['checkout_key']); if(wantsJson()) jsonResponse(cartPayload('Agregaste '.$p['name'].' al carrito.',(int)$p['id'])); flash('Agregamos la pieza a tu carrito.'); redirect('/carrito');
 }
 if ($path==='/carrito/resumen' && !$post) jsonResponse(cartPayload());
 if ($path==='/carrito/quitar' && $post) {
     $id=(int)($_POST['product_id']??0);
+    $quantity=(int)($_SESSION['cart'][$id]??0);
     unset($_SESSION['cart'][$id],$_SESSION['checkout_key']);
+    if($quantity>0 && ($removed=one('SELECT id,name FROM products WHERE id=?',[$id]))) recordVisitEvent('cart_remove',$path,$removed,$quantity);
     if(wantsJson()) jsonResponse(cartPayload('Producto eliminado del carrito.'));
     flash('Producto eliminado del carrito.'); redirect('/carrito');
 }
-if ($path==='/carrito') { if($post) { foreach(($_POST['quantities']??[]) as $id=>$qty) { $id=(int)$id; if((int)$qty<=0) unset($_SESSION['cart'][$id]); elseif(isset($_SESSION['cart'][$id])) $_SESSION['cart'][$id]=min(99,(int)$qty); } unset($_SESSION['checkout_key']); redirect('/carrito'); } render('cart',['title'=>'Tu carrito','items'=>cartItems()]); return; }
+if ($path==='/carrito') {
+    if($post) {
+        foreach(($_POST['quantities']??[]) as $id=>$qty) {
+            $id=(int)$id; $before=(int)($_SESSION['cart'][$id]??0);
+            if((int)$qty<=0) unset($_SESSION['cart'][$id]); elseif(isset($_SESSION['cart'][$id])) $_SESSION['cart'][$id]=min(99,(int)$qty);
+            $after=(int)($_SESSION['cart'][$id]??0);
+            if($after!==$before && ($changed=one('SELECT id,name FROM products WHERE id=?',[$id]))) recordVisitEvent($after>$before?'cart_add':'cart_remove',$path,$changed,abs($after-$before));
+        }
+        unset($_SESSION['checkout_key']); redirect('/carrito');
+    }
+    render('cart',['title'=>'Tu carrito','items'=>cartItems()]); return;
+}
 if ($path==='/checkout') {
     $u=requireUser(); $items=cartItems(); if(!$items) { flash('Tu carrito está vacío.'); redirect('/carrito'); }
     if($post) {

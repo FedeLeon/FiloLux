@@ -6,6 +6,7 @@ $adminLinks=[
     '/admin/categorias'=>['Categorías','M3 6h7l2 3h9v12H3V6Zm0 0V3h7l2 3'],
     '/admin/pedidos'=>['Pedidos','M5 3h14v19l-3-2-4 2-4-2-3 2V3Zm4 5h6M9 12h6M9 16h4'],
     '/admin/mensajes'=>['Mensajes','M3 4h18v13H8l-5 4V4Zm4 5h10M7 13h6'],
+    '/admin/visitas'=>['Visitas','M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Zm10-3a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z'],
     '/admin/configuracion'=>['Configuración','M4 6h16M4 12h16M4 18h16M8 3v6M16 9v6M10 15v6'],
 ];
 ?>

@@ -91,7 +91,7 @@ function requireUser(bool $admin=false): array { $u=user(); if (!$u) { $intended
 function wantsJson(): bool { return str_contains($_SERVER['HTTP_ACCEPT']??'', 'application/json'); }
 function jsonResponse(array $data,int $status=200): never { http_response_code($status); header('Content-Type: application/json; charset=UTF-8'); echo json_encode($data,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE); exit; }
 function abortPage(int $status,string $message): never { if(wantsJson()) jsonResponse(['error'=>$message],$status); http_response_code($status); render('message',['title'=>'FiloLux','message'=>$message]); exit; }
-function render(string $view,array $data=[]): void { global $path; extract($data); ob_start(); require ROOT.'/views/'.$view.'.php'; $content=ob_get_clean(); require ROOT.'/views/layout.php'; }
+function render(string $view,array $data=[]): void { global $path; if(function_exists('recordPageVisit')) recordPageVisit($view,$data); extract($data); ob_start(); require ROOT.'/views/'.$view.'.php'; $content=ob_get_clean(); require ROOT.'/views/layout.php'; }
 function money(int|string $cents): string { return '$ '.number_format((int)$cents/100,2,',','.'); }
 function cents(string $input): int { $input=trim($input); if (!preg_match('/^\d{1,8}(?:[.,]\d{1,2})?$/D',$input)) throw new InvalidArgumentException('Ingresá un importe válido, sin separadores de miles.'); $parts=explode('.',str_replace(',','.',$input)); return ((int)$parts[0])*100+(int)str_pad($parts[1]??'',2,'0'); }
 function textInput(string $key,int $max=190,bool $required=true): string { $v=trim((string)($_POST[$key]??'')); if (($required && $v==='') || mb_strlen($v)>$max) throw new InvalidArgumentException('Revisá el campo '.str_replace('_',' ',$key).'.'); return $v; }
