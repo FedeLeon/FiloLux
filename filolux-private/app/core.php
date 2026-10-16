@@ -99,7 +99,36 @@ function emailInput(): string { $v=mb_strtolower(textInput('email')); if (!filte
 function passwordInput(): string { $v=(string)($_POST['password']??''); if (strlen($v)<10 || strlen($v)>72) throw new InvalidArgumentException('La contraseña debe tener entre 10 y 72 caracteres.'); return $v; }
 function rateLimit(string $action,int $max=10,int $seconds=900): void { $key=hash('sha256',$action.'|'.($_SERVER['REMOTE_ADDR']??'cli')); query('INSERT INTO rate_limits (bucket,attempts,expires_at) VALUES (?,1,?) ON DUPLICATE KEY UPDATE attempts=IF(expires_at < UNIX_TIMESTAMP(),1,attempts+1),expires_at=IF(expires_at < UNIX_TIMESTAMP(),VALUES(expires_at),expires_at)',[$key,time()+$seconds]); $r=one('SELECT attempts FROM rate_limits WHERE bucket=?',[$key]); if ($r['attempts']>$max) throw new InvalidArgumentException('Demasiados intentos. Volvé a intentar en unos minutos.'); }
 function whatsapp(string $message='Hola, quiero consultar por un trabajo personalizado.'): string { $phone=preg_replace('/\D/','',setting('whatsapp')); return $phone?'https://wa.me/'.$phone.'?text='.rawurlencode($message):url('/contacto'); }
-function cartItems(): array { $out=[]; foreach (($_SESSION['cart']??[]) as $id=>$qty) { $p=one("SELECT p.*,(SELECT path FROM product_images WHERE product_id=p.id ORDER BY id LIMIT 1) AS image FROM products p WHERE p.id=? AND active=1 AND mode='buy'",[$id]); if ($p) { $p['quantity']=min(99,max(1,(int)$qty)); $out[]=$p; } } return $out; }
+function productColorOptions(): array {
+    return ['madera_cruda'=>'Madera cruda','negro'=>'Negro','blanco'=>'Blanco','rosa_pastel'=>'Rosa pastel','celeste_pastel'=>'Celeste pastel','dorado'=>'Dorado'];
+}
+function hasProductColors(): bool {
+    static $available;
+    return $available ??= (int)query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND ((TABLE_NAME='products' AND COLUMN_NAME='available_colors') OR (TABLE_NAME='order_items' AND COLUMN_NAME='color'))")->fetchColumn()===2;
+}
+function productColors(array $product): array {
+    $colors=json_decode($product['available_colors']??'[]',true);
+    return is_array($colors)?array_values(array_intersect(array_keys(productColorOptions()),array_filter($colors,'is_string'))):[];
+}
+function cartKeyInput(): string {
+    $key=$_POST['cart_key']??$_POST['product_id']??'';
+    if(!is_scalar($key) || !preg_match('/^[1-9][0-9]*(?::[a-z_]+)?$/D',(string)$key)) throw new InvalidArgumentException('Producto de carrito inválido.');
+    return (string)$key;
+}
+function cartItems(): array {
+    $out=[];
+    foreach(($_SESSION['cart']??[]) as $key=>$qty) {
+        [$id,$color]=array_pad(explode(':',(string)$key,2),2,'');
+        $p=one("SELECT p.*,(SELECT path FROM product_images WHERE product_id=p.id ORDER BY id LIMIT 1) AS image FROM products p WHERE p.id=? AND active=1 AND mode='buy'",[(int)$id]);
+        if(!$p) continue;
+        $available=productColors($p);
+        $p['cart_key']=(string)$key;
+        $p['color']=productColorOptions()[$color]??'';
+        $p['invalid_color']=$available?!in_array($color,$available,true):$color!=='';
+        $p['quantity']=min(99,max(1,(int)$qty)); $out[]=$p;
+    }
+    return $out;
+}
 function cartTotal(array $items): int { return array_sum(array_map(fn($p)=>(int)$p['price_cents']*$p['quantity'],$items)); }
 function orderStatuses(): array { return ['pendiente','en fabricación','listo','enviado','entregado','cancelado']; }
 function paymentLabel(string $s): string { return ['pending'=>'Pendiente','approved'=>'Aprobado','in_process'=>'En proceso','rejected'=>'Rechazado','cancelled'=>'Cancelado','refunded'=>'Reintegrado','charged_back'=>'Contracargo','authorized'=>'Autorizado'][$s]??$s; }

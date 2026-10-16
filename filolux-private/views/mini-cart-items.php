@@ -6,8 +6,8 @@
 <?php foreach($items as $i): ?>
 <article class="mini-cart-item<?= (int)$i['id']===$addedId?' just-added':'' ?>">
     <a href="/producto/<?= (int)$i['id'] ?>" class="mini-cart-image"><?php if($i['image']): ?><img src="/<?= e($i['image']) ?>" alt="<?= e($i['name']) ?>"><?php else: ?><span class="brand-symbol" aria-hidden="true"></span><?php endif ?></a>
-    <div class="mini-cart-description"><h3><a href="/producto/<?= (int)$i['id'] ?>"><?= e($i['name']) ?></a></h3><small><?= $i['quantity'] ?> × <?= money($i['price_cents']) ?></small><?php if(($i['dimensions']??'')!==''): ?><small><?= e($i['dimensions']) ?></small><?php endif ?></div>
-    <div class="mini-cart-actions"><strong><?= money($i['quantity']*$i['price_cents']) ?></strong><form method="post" action="/carrito/quitar"><?= csrf() ?><input type="hidden" name="product_id" value="<?= (int)$i['id'] ?>"><button type="submit" class="cart-remove" data-cart-remove aria-label="Eliminar <?= e($i['name']) ?> del carrito" title="Eliminar producto"><?php require ROOT.'/views/trash-icon.php'; ?></button></form></div>
+    <div class="mini-cart-description"><h3><a href="/producto/<?= (int)$i['id'] ?>"><?= e($i['name']) ?></a></h3><?php if($i['color']!==''): ?><small>Color: <?= e($i['color']) ?></small><?php endif ?><small><?= $i['quantity'] ?> × <?= money($i['price_cents']) ?></small><?php if(($i['dimensions']??'')!==''): ?><small><?= e($i['dimensions']) ?></small><?php endif ?></div>
+    <div class="mini-cart-actions"><strong><?= money($i['quantity']*$i['price_cents']) ?></strong><form method="post" action="/carrito/quitar"><?= csrf() ?><input type="hidden" name="cart_key" value="<?= e($i['cart_key']) ?>"><button type="submit" class="cart-remove" data-cart-remove aria-label="Eliminar <?= e($i['name']) ?> del carrito" title="Eliminar producto"><?php require ROOT.'/views/trash-icon.php'; ?></button></form></div>
 </article>
 <?php endforeach ?>
 </div>

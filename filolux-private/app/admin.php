@@ -28,10 +28,18 @@ if($path==='/admin/productos') {
 if(preg_match('#^/admin/productos/(nuevo|\d+)$#D',$path,$m)) {
     $id=$m[1]==='nuevo'?0:(int)$m[1]; $product=$id?one('SELECT * FROM products WHERE id=?',[$id]):['name'=>'','description'=>'','dimensions'=>'','category_id'=>'','price_cents'=>0,'lead_time'=>'7 a 10 días hábiles','mode'=>'buy','active'=>1,'featured'=>0]; if(!$product) abortPage(404,'Producto no encontrado.');
     $selectedCategories=$id?productCategoryIds($id):[];
+    $selectedColors=productColors($product);
     $error='';
     if($post) {
         $uploaded=[];
         try {
+            if(isset($_POST['colors_present'])) {
+                $rawColors=$_POST['colors']??[];
+                if(!is_array($rawColors) || count($rawColors)>6) throw new InvalidArgumentException('Colores inválidos.');
+                foreach($rawColors as $color) if(!is_string($color) || !isset(productColorOptions()[$color])) throw new InvalidArgumentException('Color inválido.');
+                $selectedColors=array_values(array_unique($rawColors));
+                if(!hasProductColors()) throw new InvalidArgumentException('Importá primero la migración de colores.');
+            }
             $rawCategories=$_POST['category_ids']??[];
             // Accept older clients until their forms are refreshed after the deploy.
             if(!isset($_POST['categories_present']) && !array_key_exists('category_ids',$_POST) && !empty($_POST['category_id'])) $rawCategories=[$_POST['category_id']];
@@ -61,6 +69,7 @@ if(preg_match('#^/admin/productos/(nuevo|\d+)$#D',$path,$m)) {
             db()->beginTransaction(); $args=[$cat?:null,$name,$description,$dimensions,$price,$lead,$mode,isset($_POST['active'])?1:0,isset($_POST['featured'])?1:0];
             if($id) { $args[]=$id; query('UPDATE products SET category_id=?,name=?,description=?,dimensions=?,price_cents=?,lead_time=?,mode=?,active=?,featured=? WHERE id=?',$args); }
             else { query('INSERT INTO products (category_id,name,description,dimensions,price_cents,lead_time,mode,active,featured) VALUES (?,?,?,?,?,?,?,?,?)',$args); $id=(int)db()->lastInsertId(); }
+            if(hasProductColors()) query('UPDATE products SET available_colors=? WHERE id=?',[json_encode($selectedColors),$id]);
             if(hasProductCategories()) {
                 query('DELETE FROM product_categories WHERE product_id=?',[$id]);
                 foreach($selectedCategories as $categoryId) query('INSERT INTO product_categories (product_id,category_id) VALUES (?,?)',[$id,$categoryId]);
@@ -72,7 +81,7 @@ if(preg_match('#^/admin/productos/(nuevo|\d+)$#D',$path,$m)) {
             flash('Producto guardado.'); redirect('/admin/productos');
         } catch(Throwable $ex) { if(db()->inTransaction()) db()->rollBack(); foreach($uploaded as $image) @unlink(PUBLIC_ROOT.'/'.$image); if(!$ex instanceof InvalidArgumentException) throw $ex; $error=$ex->getMessage(); $product=array_merge($product,array_intersect_key($_POST,$product)); if(isset($_POST['price'])) { try { $product['price_cents']=cents($_POST['price']); } catch(Throwable) {} } $product['active']=isset($_POST['active']); $product['featured']=isset($_POST['featured']); }
     }
-    render('admin-product',['title'=>$id?'Editar producto':'Nueva pieza','product'=>$product,'selectedCategories'=>$selectedCategories,'categories'=>query('SELECT * FROM categories ORDER BY name')->fetchAll(),'images'=>$id?query('SELECT * FROM product_images WHERE product_id=? ORDER BY id',[$id])->fetchAll():[],'error'=>$error]); return;
+    render('admin-product',['title'=>$id?'Editar producto':'Nueva pieza','product'=>$product,'selectedCategories'=>$selectedCategories,'selectedColors'=>$selectedColors,'categories'=>query('SELECT * FROM categories ORDER BY name')->fetchAll(),'images'=>$id?query('SELECT * FROM product_images WHERE product_id=? ORDER BY id',[$id])->fetchAll():[],'error'=>$error]); return;
 }
 if($path==='/admin/categorias') {
     $error=''; if($post) { try { $id=(int)($_POST['id']??0); if(isset($_POST['delete'])) query('DELETE FROM categories WHERE id=?',[$id]); else { $name=textInput('name',100); if(one('SELECT id FROM categories WHERE name=? AND id<>?',[$name,$id])) throw new InvalidArgumentException('Ya existe esa categoría.'); if($id) query('UPDATE categories SET name=? WHERE id=?',[$name,$id]); else query('INSERT INTO categories (name) VALUES (?)',[$name]); } flash('Categorías actualizadas.'); redirect('/admin/categorias'); } catch(InvalidArgumentException $ex) { $error=$ex->getMessage(); } }

@@ -61,35 +61,39 @@ if ($path==='/contacto') { render('contact',['title'=>'Hablemos de tu próxima i
 if ($path==='/privacidad' && !$post) { render('privacy',['title'=>'Privacidad']); return; }
 if ($path==='/carrito/agregar' && $post) {
     $p=one("SELECT * FROM products WHERE id=? AND active=1 AND mode='buy'",[(int)($_POST['product_id']??0)]); if(!$p) abortPage(404,'Este producto no está disponible para comprar.');
-    $before=(int)($_SESSION['cart'][$p['id']]??0);
-    $_SESSION['cart'][$p['id']]=min(99,$before+max(1,min(99,(int)($_POST['quantity']??1))));
-    $added=$_SESSION['cart'][$p['id']]-$before;
+    $colors=productColors($p); $color=textInput('color',30,false);
+    if(($colors && !in_array($color,$colors,true)) || (!$colors && $color!=='')) throw new InvalidArgumentException('Elegí un color disponible para esta pieza.');
+    $cartKey=(string)$p['id'].($color!==''?':'.$color:'');
+    $before=(int)($_SESSION['cart'][$cartKey]??0);
+    $_SESSION['cart'][$cartKey]=min(99,$before+max(1,min(99,(int)($_POST['quantity']??1))));
+    $added=$_SESSION['cart'][$cartKey]-$before;
     if($added>0) recordVisitEvent('cart_add',$path,$p,$added);
     unset($_SESSION['checkout_key']); if(wantsJson()) jsonResponse(cartPayload('Agregaste '.$p['name'].' al carrito.',(int)$p['id'])); flash('Agregamos la pieza a tu carrito.'); redirect('/carrito');
 }
 if ($path==='/carrito/resumen' && !$post) jsonResponse(cartPayload());
 if ($path==='/carrito/quitar' && $post) {
-    $id=(int)($_POST['product_id']??0);
-    $quantity=(int)($_SESSION['cart'][$id]??0);
-    unset($_SESSION['cart'][$id],$_SESSION['checkout_key']);
-    if($quantity>0 && ($removed=one('SELECT id,name FROM products WHERE id=?',[$id]))) recordVisitEvent('cart_remove',$path,$removed,$quantity);
+    $key=cartKeyInput(); $id=(int)$key;
+    $quantity=(int)($_SESSION['cart'][$key]??0);
+    unset($_SESSION['cart'][$key],$_SESSION['checkout_key']);
+    if($quantity>0 && ($removed=one('SELECT id,name FROM products WHERE id=?',[(int)$id]))) recordVisitEvent('cart_remove',$path,$removed,$quantity);
     if(wantsJson()) jsonResponse(cartPayload('Producto eliminado del carrito.'));
     flash('Producto eliminado del carrito.'); redirect('/carrito');
 }
 if ($path==='/carrito') {
     if($post) {
         foreach(($_POST['quantities']??[]) as $id=>$qty) {
-            $id=(int)$id; $before=(int)($_SESSION['cart'][$id]??0);
+            if(!preg_match('/^[1-9][0-9]*(?::[a-z_]+)?$/D',(string)$id) || !is_scalar($qty)) throw new InvalidArgumentException('Cantidad inválida.');
+            $before=(int)($_SESSION['cart'][$id]??0);
             if((int)$qty<=0) unset($_SESSION['cart'][$id]); elseif(isset($_SESSION['cart'][$id])) $_SESSION['cart'][$id]=min(99,(int)$qty);
             $after=(int)($_SESSION['cart'][$id]??0);
-            if($after!==$before && ($changed=one('SELECT id,name FROM products WHERE id=?',[$id]))) recordVisitEvent($after>$before?'cart_add':'cart_remove',$path,$changed,abs($after-$before));
+            if($after!==$before && ($changed=one('SELECT id,name FROM products WHERE id=?',[(int)$id]))) recordVisitEvent($after>$before?'cart_add':'cart_remove',$path,$changed,abs($after-$before));
         }
         unset($_SESSION['checkout_key']); redirect('/carrito');
     }
     render('cart',['title'=>'Tu carrito','items'=>cartItems()]); return;
 }
 if ($path==='/checkout') {
-    $u=requireUser(); $items=cartItems(); if(!$items) { flash('Tu carrito está vacío.'); redirect('/carrito'); }
+    $u=requireUser(); $items=cartItems(); foreach($items as $item) if($item['invalid_color']) throw new InvalidArgumentException('Un color del carrito ya no está disponible. Quitá esa pieza y volvé a elegirla desde el catálogo.'); if(!$items) { flash('Tu carrito está vacío.'); redirect('/carrito'); }
     if($post) {
         if (!hash_equals($_SESSION['checkout_key']??'',(string)($_POST['checkout_key']??''))) throw new InvalidArgumentException('El carrito cambió. Volvé a revisar la compra.');
         if(!Payments::enabled()) throw new InvalidArgumentException('Los pagos todavía no están habilitados. Consultanos desde Contacto.');
@@ -103,9 +107,17 @@ if ($path==='/checkout') {
             $existing=one('SELECT id FROM orders WHERE checkout_key=? AND user_id=?',[$_SESSION['checkout_key'],$u['id']]);
             if($existing) { db()->commit(); redirect('/pedidos/'.$existing['id']); }
             $items=cartItems(); if(!$items) throw new InvalidArgumentException('El carrito ya no contiene productos disponibles.');
+            foreach($items as $item) if($item['invalid_color']) throw new InvalidArgumentException('Revisá los colores de tu carrito antes de comprar.');
             $subtotal=cartTotal($items); $shipping=$delivery==='shipping'?(int)setting('shipping_price','0'):0;
             query('INSERT INTO orders (user_id,checkout_key,customer_name,email,phone,delivery,address,notes,subtotal_cents,shipping_cents,total_cents,payment_mode) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',[$u['id'],$_SESSION['checkout_key'],$name,$u['email'],$phone,$delivery,$address,$notes,$subtotal,$shipping,$subtotal+$shipping,setting('mp_mode','test')]);
-            $id=db()->lastInsertId(); foreach($items as $i) query('INSERT INTO order_items (order_id,product_id,name,quantity,price_cents,lead_time,dimensions) VALUES (?,?,?,?,?,?,?)',[$id,$i['id'],$i['name'],$i['quantity'],$i['price_cents'],$i['lead_time'],$i['dimensions']]); db()->commit();
+            $id=db()->lastInsertId();
+            foreach($items as $i) {
+                $columns='order_id,product_id,name,quantity,price_cents,lead_time,dimensions';
+                $values=[$id,$i['id'],$i['name'],$i['quantity'],$i['price_cents'],$i['lead_time'],$i['dimensions']];
+                if(hasProductColors()) { $columns.=',color'; $values[]=$i['color']; }
+                query('INSERT INTO order_items ('.$columns.') VALUES ('.implode(',',array_fill(0,count($values),'?')).')',$values);
+            }
+            db()->commit();
         } catch(Throwable $ex) { if(db()->inTransaction()) db()->rollBack(); throw $ex; }
         $_SESSION['cart']=[]; unset($_SESSION['checkout_key']);
         sendMail($u['email'],'Recibimos tu pedido #'.$id,'Tu pedido fue registrado. Completá el pago desde '.url('/pedidos/'.$id).'. La fabricación comienza al confirmar el pago.');

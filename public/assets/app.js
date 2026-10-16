@@ -326,3 +326,10 @@ if (adminSidebar && adminMenuToggle) {
   document.addEventListener('keydown', event => { if (event.key === 'Escape' && !panel.hidden) { event.preventDefault(); setOpen(false, true); } });
   document.addEventListener('focusin', event => { if (!panel.hidden && !panel.contains(event.target) && !trigger.contains(event.target)) setOpen(false); });
 })();
+
+// Native checkbox/radio controls keep color choices accessible without JavaScript.
+document.querySelectorAll('[data-all-colors]').forEach(button => {
+  button.addEventListener('click', () => {
+    button.closest('[data-admin-colors]').querySelectorAll('input[type="checkbox"]').forEach(input => { input.checked = true; });
+  });
+});

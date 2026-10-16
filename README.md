@@ -220,3 +220,9 @@ Las pruebas de firma y conciliación usan respuestas sintéticas de pagos: **no 
 Respaldá juntos la base MySQL, la carpeta pública `uploads/` y los archivos privados `config.php` y `.env`. La clave de `config.php` permite descifrar las credenciales: perderla requiere volver a cargarlas; no la regeneres al actualizar. Conservá backups privados fuera de la web y verificá restauración en otra base antes de reemplazar datos.
 
 Revisá periódicamente errores PHP y entregabilidad SMTP en Hostinger, notificaciones fallidas en Mercado Pago y el espacio ocupado por imágenes. Antes de publicar, completá tus datos comerciales y condiciones de compra, fabricación, entrega y devoluciones según tu operación. El perfil administrador se crea al importar el SQL inicial; esta versión no incluye altas de administradores desde la web.
+
+### Colores de productos
+
+Para actualizar una tienda existente, importá `filolux-private/database/migrations/2026-10-16-product-colors.sql` desde phpMyAdmin **antes del deploy**. Es repetible y conserva los datos. Las instalaciones nuevas ya incluyen los campos en el SQL inicial.
+
+Al crear o editar productos podés marcar Madera cruda, Negro, Blanco, Rosa pastel, Celeste pastel y Dorado, o usar “Todos los colores”. Sin colores seleccionados no aparece el selector en la tienda. Con colores habilitados el cliente debe elegir uno. Cada color tiene su propio renglón en el carrito y queda guardado en el pedido; cambiar los colores del catálogo no altera pedidos anteriores. Si retirás un color que estaba en un carrito, el cliente deberá quitar esa pieza y elegir una opción vigente antes de comprar.
