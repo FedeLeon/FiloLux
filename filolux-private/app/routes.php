@@ -137,13 +137,29 @@ if ($path==='/checkout') {
     $_SESSION['checkout_key']??=bin2hex(random_bytes(32)); render('checkout',['title'=>'Finalizar compra','items'=>$items,'customer'=>$customer]); return;
 }
 if($path==='/cuenta') { $u=requireUser(); render('account',['title'=>'Mi cuenta','orders'=>query('SELECT * FROM orders WHERE user_id=? ORDER BY id DESC LIMIT 100',[$u['id']])->fetchAll()]); return; }
-if(preg_match('#^/pedidos/(\d+)(/pagar)?$#D',$path,$m)) {
+if(preg_match('#^/pedidos/(\d+)(/pagar|/verificar)?$#D',$path,$m)) {
     $u=requireUser(); $order=one('SELECT * FROM orders WHERE id=? AND user_id=?',[$m[1],$u['id']]); if(!$order) abortPage(404,'No encontramos ese pedido.');
     if(empty($m[2]) && !$post && isset($_GET['retorno'])) {
         Payments::registerReturn($order,$_GET);
-        $order=one('SELECT * FROM orders WHERE id=? AND user_id=?',[$order['id'],$u['id']]);
+        redirect('/pedidos/'.$order['id']);
     }
-    if(!empty($m[2]) && $post) {
+    if(($m[2]??'')==='/verificar' && $post) {
+        rateLimit('verify-payment:'.$u['id'],6,60);
+        $hint=json_decode($order['payment_return_data']??'null',true);
+        $paymentId=(string)($hint['payment_id']??'');
+        if($paymentId==='') $paymentId=(string)(one('SELECT id FROM payments WHERE order_id=? ORDER BY updated_at DESC LIMIT 1',[$order['id']])['id']??'');
+        if($paymentId==='') throw new InvalidArgumentException('Todavía no recibimos el código del pago.');
+        try {
+            $result=Payments::syncPayment($paymentId,[$order['payment_mode']],(int)$order['id']);
+            if($result['changed']) sendMail($order['email'],'Actualización del pago #'.$order['id'],'El estado de tu pago fue actualizado. Consultá '.url('/pedidos/'.$order['id']));
+            flash('Consultamos el pago en Mercado Pago. El estado del pedido está actualizado.');
+        } catch(Throwable $ex) {
+            error_log('FiloLux: verificación de pago payment_id='.$paymentId.' motivo='.($ex instanceof InvalidArgumentException?$ex->getMessage():'No se pudo consultar a Mercado Pago.'));
+            flash('No pudimos confirmar el pago todavía. Podés intentar verificarlo de nuevo en unos instantes.');
+        }
+        redirect('/pedidos/'.$order['id']);
+    }
+    if(($m[2]??'')==='/pagar' && $post) {
         if($order['status']==='cancelado' || in_array($order['payment_status'],['approved','refunded','charged_back'],true)) throw new InvalidArgumentException('Este pedido ya no admite pagos.');
         if(Payments::waiting($order)) throw new InvalidArgumentException('Estamos verificando un pago de este pedido. Esperá la confirmación antes de volver a pagar.');
         if(!Payments::enabled($order['payment_mode'])) throw new InvalidArgumentException('Los pagos todavía no están habilitados.');

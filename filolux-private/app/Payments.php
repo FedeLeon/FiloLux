@@ -63,7 +63,44 @@ final class Payments {
         $manifest='id:'.strtolower($id).';request-id:'.$requestId.';ts:'.$ts.';';
         return hash_equals(hash_hmac('sha256',$manifest,$key),$parts['v1']??'');
     }
-    public static function reconcile(array $payment,string $mode,int $collector): bool {
+    public static function isTestAccount(array $account): bool {
+        return is_array($account['tags']??null) && in_array('test_user',$account['tags'],true);
+    }
+    public static function syncPayment(string $id,array $modes,?int $expectedOrder=null,?callable $transport=null): array {
+        if(!preg_match('/^[0-9]{1,100}$/D',$id)) throw new InvalidArgumentException('ID de pago inválido.');
+        $api=$transport??[self::class,'api'];
+        $lock='flx_'.substr(hash('sha256',$id),0,50);
+        if((int)(one('SELECT GET_LOCK(?,5) AS acquired',[$lock])['acquired']??0)!==1) throw new RuntimeException('Pago en verificación.');
+        try {
+            $error=new InvalidArgumentException('No se encontró un entorno válido para este pago.');
+            foreach(array_unique($modes) as $mode) {
+                if(!in_array($mode,['test','production'],true)) continue;
+                try {
+                    $payment=$api('GET','/v1/payments/'.$id,$mode);
+                    if((string)($payment['id']??'')!==$id) throw new InvalidArgumentException('El ID consultado no coincide con el pago recibido.');
+                    $ref=(string)($payment['external_reference']??'');
+                    if(!ctype_digit($ref) || ($expectedOrder!==null && $ref!==(string)$expectedOrder)) throw new InvalidArgumentException('El pago no corresponde al pedido que se está verificando.');
+                    $order=one('SELECT id,payment_mode FROM orders WHERE id=?',[$ref]);
+                    if(!$order || $order['payment_mode']!==$mode) throw new InvalidArgumentException('El entorno del pedido no coincide con el entorno del webhook (pruebas/producción).');
+                    $me=$api('GET','/users/me',$mode);
+                    if(empty($me['id'])) throw new RuntimeException('Cuenta receptora no disponible.');
+                    $testAccount=self::isTestAccount($me);
+                    // Test-account credentials can operate on the production API. Verify the
+                    // provider's account tags instead of trusting browser data or token prefixes.
+                    if($mode==='test' && ($payment['live_mode']??null)===true && !$testAccount) {
+                        $payerId=(string)($payment['payer']['id']??'');
+                        if(ctype_digit($payerId)) {
+                            $payer=$api('GET','/users/'.$payerId,$mode);
+                            $testAccount=(string)($payer['id']??'')===$payerId && self::isTestAccount($payer);
+                        }
+                    }
+                    return ['changed'=>self::reconcile($payment,$mode,(int)$me['id'],$testAccount),'order_id'=>(int)$ref,'mode'=>$mode];
+                } catch(InvalidArgumentException|RuntimeException $ex) { $error=$ex; }
+            }
+            throw $error;
+        } finally { query('SELECT RELEASE_LOCK(?)',[$lock]); }
+    }
+    public static function reconcile(array $payment,string $mode,int $collector,bool $verifiedTestAccount=false): bool {
         $ref=(string)($payment['external_reference']??''); $pid=(string)($payment['id']??'');
         if (!ctype_digit($ref) || !ctype_digit($pid)) throw new InvalidArgumentException('Referencia inválida');
         db()->beginTransaction();
@@ -76,7 +113,8 @@ final class Payments {
             if($amount!==(int)$o['total_cents']) throw new InvalidArgumentException('El importe del pago no coincide con el total del pedido.');
             if((int)($payment['collector_id']??0)!==$collector) throw new InvalidArgumentException('La cuenta receptora del pago no coincide con la cuenta del Access Token.');
             if(!array_key_exists('live_mode',$payment)) throw new InvalidArgumentException('Mercado Pago no informó el entorno del pago (live_mode).');
-            if((bool)$payment['live_mode']!==($mode==='production')) throw new InvalidArgumentException('El pago consultado pertenece a un entorno diferente al webhook (live_mode).');
+            if($mode==='production' && $verifiedTestAccount) throw new InvalidArgumentException('No se puede acreditar una cuenta de prueba como cobro de producción.');
+            if((bool)$payment['live_mode']!==($mode==='production') && !($mode==='test' && $verifiedTestAccount)) throw new InvalidArgumentException('El pago consultado tiene live_mode incompatible y no se pudo verificar una cuenta de prueba.');
             $existing=one('SELECT order_id FROM payments WHERE id=?',[$pid]);
             if($existing && (int)$existing['order_id']!==(int)$o['id']) throw new InvalidArgumentException('Pago ya asociado a otro pedido');
             $status=(string)($payment['status']??'');

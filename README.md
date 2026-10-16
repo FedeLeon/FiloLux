@@ -107,7 +107,7 @@ La recepción usa CSRF, validación de longitudes y teléfono, límite de cinco 
 
 Los pedidos guardan su entorno, precio, envío y plazos originales. El webhook consulta el pago a Mercado Pago, valida firma, referencia, importe, moneda, cuenta receptora y modo de prueba/producción. Los pagos repetidos no duplican registros y un intento rechazado no reemplaza un pago aprobado. El regreso del navegador **no confirma el pago**. Un error temporal de API devuelve 503 para permitir reintentos del proveedor. No se guardan tarjetas.
 
-En caso de fallo al abrir Mercado Pago, el pedido queda guardado y el cliente puede reintentar desde su cuenta. Los pagos o avisos de correo pueden tardar; revisá las notificaciones en Mercado Pago si un pedido sigue pendiente. No hay conciliación programada: el estado se actualiza por webhook. Cancelar un pedido desde el administrador **no reintegra dinero**; los reintegros y disputas se gestionan desde Mercado Pago y se reflejan cuando se notifica el pago.
+En caso de fallo al abrir Mercado Pago, el pedido queda guardado y el cliente puede reintentar desde su cuenta. Los pagos o avisos de correo pueden tardar; revisá las notificaciones en Mercado Pago si un pedido sigue pendiente. No hay conciliación programada: el estado se actualiza por webhook o mediante “Verificar mi pago” desde el pedido. Cancelar un pedido desde el administrador **no reintegra dinero**; los reintegros y disputas se gestionan desde Mercado Pago y se reflejan cuando se notifica el pago.
 
 Referencias: [preferencias](https://www.mercadopago.com.ar/developers/es/docs/checkout-pro-preferences/create-payment-preference), [notificaciones](https://www.mercadopago.com.ar/developers/es/docs/checkout-pro-preferences/payment-notifications).
 
@@ -235,9 +235,9 @@ El menú de cuenta del encabezado ofrece Mi perfil, Mis pedidos y Cerrar sesión
 
 ### Datos de pago y prevención de reintentos accidentales
 
-Antes del deploy, importá `filolux-private/database/migrations/2026-10-16-payment-tracking.sql` en tiendas existentes. Registra la referencia que devuelve el checkout sin acreditar el pago por esos parámetros. El pedido muestra por separado la referencia no verificada y los pagos confirmados mediante consulta a Mercado Pago desde el webhook, incluyendo ID, estado, importe y metadatos disponibles.
+Antes del deploy, importá `filolux-private/database/migrations/2026-10-16-payment-tracking.sql` en tiendas existentes. Registra la referencia que devuelve el checkout sin acreditar el pago por esos parámetros. El administrador ve por separado la referencia no verificada y los pagos confirmados mediante consulta a Mercado Pago, incluyendo ID, estado, importe y metadatos disponibles. El cliente ve únicamente el código de pago y el estado.
 
-Cuando hay una referencia sin verificar o un pago pendiente/en proceso/autorizado, el botón de pagar queda deshabilitado y el servidor rechaza nuevos intentos. El bloqueo persiste al recargar o cambiar de sesión. Un rechazo o cancelación confirmado permite reintentar. No se desbloquea automáticamente por tiempo: si el webhook falla, revisá las notificaciones de Mercado Pago. “Actualizar estado” vuelve a leer el estado guardado; no consulta por sí mismo a Mercado Pago.
+Cuando hay una referencia sin verificar o un pago pendiente/en proceso/autorizado, el botón de pagar queda deshabilitado y el servidor rechaza nuevos intentos. El bloqueo persiste al recargar o cambiar de sesión. Un rechazo o cancelación confirmado permite reintentar. No se desbloquea automáticamente por tiempo: si el webhook falla, revisá las notificaciones de Mercado Pago. “Verificar mi pago” consulta el pago a Mercado Pago y vuelve a validar sus datos antes de actualizar el pedido.
 
 ### Notificaciones en vivo y pedidos nuevos
 
@@ -246,3 +246,11 @@ Antes del deploy, importá `filolux-private/database/migrations/2026-10-16-live-
 Con la web abierta y una sesión iniciada se consultan novedades cada 5 segundos. El admin recibe avisos de nuevos pedidos (incluidos los que todavía no están pagados), pagos verificados y webhooks rechazados después de validar su firma. Cada cliente recibe únicamente los cambios confirmados del estado de sus propios pagos. Los avisos aparecen arriba a la derecha, enlazan al pedido o al log y desaparecen después de 8 segundos; se pueden cerrar antes y el temporizador se pausa al pasar el cursor o enfocar el aviso. La consulta se pausa cuando la pestaña está oculta y se retoma al volver. No requiere WebSockets, servicios externos ni procesos permanentes en Hostinger.
 
 Los eventos se guardan con claves únicas para evitar avisos duplicados de Mercado Pago. El contador del menú Pedidos muestra pedidos nuevos sin revisar, independientemente del estado del pago, y baja al abrir cada detalle desde el admin. Ver la lista no marca todos como revisados. La burbuja se actualiza automáticamente. Al abrir una página se toma como punto de partida el evento más reciente, evitando mostrar avisos antiguos; el contador de pedidos sigue conservándose aunque cierres la web.
+
+### Verificación manual y cuentas de prueba de Mercado Pago
+
+En el detalle del pedido, “Verificar mi pago” consulta el pago desde el servidor sin crear otro cobro. Requiere sesión del propietario, CSRF y un máximo de seis consultas por minuto por usuario/IP. El ID se toma de la referencia guardada o de los pagos asociados, nunca de un ID enviado en ese formulario. Se verifican el pedido esperado, importe, moneda, cuenta receptora y entorno antes de actualizar.
+
+Para cuentas de prueba que operan con credenciales de la API productiva, `live_mode=true` solo se acepta en pedidos de prueba si la API identifica al vendedor o al comprador mediante la etiqueta `test_user`. No se deduce del prefijo del token, del correo ni de los datos del navegador. Si no se puede verificar la cuenta, se conserva el bloqueo. Una cuenta vendedora de prueba no se acredita en pedidos de producción. Cuando una firma corresponde a ambos secretos configurados, se elige el entorno que coincide con el pedido consultado.
+
+Los clientes ven el código del pago y su estado. Las referencias de integración, medios de pago y demás datos técnicos se muestran únicamente a administradores. El estado de fabricación se etiqueta por separado para distinguirlo del estado del pago.

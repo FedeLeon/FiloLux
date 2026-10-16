@@ -433,3 +433,5 @@ h1 em,h2 em,h3 em,h4 em,h5 em,h6 em{font-weight:inherit}
 @media(prefers-reduced-motion:reduce){.live-toast{animation:none}}
 
 .account-chevron,.account-menu-icon{display:block;flex-shrink:0}
+
+.checkout-layout .form-panel p{overflow-wrap:anywhere}

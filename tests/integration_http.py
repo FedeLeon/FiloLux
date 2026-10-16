@@ -54,7 +54,8 @@ try:
     path=urlparse(r.headers['Location']).path; order_id=int(path.rsplit('/',1)[1]); r=get(a,path)
     check('$ 52.500,00' in r.text,'envío y total autoritativos')
     check(b.get(BASE+path).status_code==404,'aislamiento de pedidos entre clientes')
-    r=get(a,path+'?retorno=1&status=approved'); check('Pago: Pendiente' in r.text,'retorno manipulado no acredita pago')
+    r=a.get(BASE+path+'?retorno=1&status=approved',allow_redirects=False); check(r.status_code==303 and urlparse(r.headers['Location']).path==path,'retorno limpia parámetros técnicos')
+    r=get(a,path); check('Pago: Pendiente' in r.text,'retorno manipulado no acredita pago')
     # Admin CRUD and upload.
     t,_=csrf(admin,'/login'); r=post(admin,'/login',{'email':'admin','password':'AdminTest2026!'},t); check(r.status_code==303,'ingreso administrador')
     get(admin,'/admin'); get(admin,'/admin/configuracion'); get(admin,'/admin/pedidos')
