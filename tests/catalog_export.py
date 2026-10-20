@@ -56,6 +56,20 @@ try:
         assert '20 × 30 cm' in text and 'Negro, Dorado' in text and 'Sin categoría' in text
         assert re.search(r'FIN-DE-\s*DESCRIPCIÓN',text)
         assert 'Organizador de escritorio' not in text and 'Un regalo con historia' not in text
+        assert 'Índice de categorías' in text.split('\f')[0]
+        # Resolve actual PDF GoTo actions: index links land on each category's opening page.
+        raw=pdf.read_bytes()
+        objects=dict(re.findall(rb'(\d+) 0 obj\s*(.*?)\s*endobj',raw,re.S))
+        targets=re.findall(rb'/S /GoTo\s*/D (\d+) 0 R',raw)
+        groups=list(dict.fromkeys(p['export_category'] for p in expected))
+        assert len(targets)==2*len(groups)
+        pages=re.findall(rb'(\d+) 0 obj\s*<< /Type /Page\s',raw)
+        text_pages=text.split('\f')
+        for target,name in zip(targets[:len(groups)],groups):
+            page_ref=re.search(rb'\[(\d+) 0 R',objects[target]).group(1)
+            assert text_pages[pages.index(page_ref)].strip().splitlines()[0]==name
+        for target in targets[len(groups):]:
+            assert re.search(rb'\[(\d+) 0 R',objects[target]).group(1)==pages[0]
         assert re.search(r'^\s*\d+\s+\d+\s+image',subprocess.check_output(['pdfimages','-list',str(pdf)],text=True),re.M)
     assert s.get(BASE+'/catalogo/descargar/html').status_code==404
     assert s.get(BASE+'/catalogo/descargar/pdf/extra').status_code==404

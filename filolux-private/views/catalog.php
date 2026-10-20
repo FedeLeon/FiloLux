@@ -12,7 +12,7 @@ $catalogLink=function(array $changes=[]) use ($filters): string {
         <div class="catalog-heading-actions">
             <span class="result-count" role="status"><?= $total ?> <?= $total===1?'pieza':'piezas' ?></span>
             <details class="catalog-download" data-catalog-download>
-                <summary class="btn small secondary">Descargar catálogo <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg></summary>
+                <summary class="btn small">Descargar catálogo <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg></summary>
                 <div class="catalog-download-panel">
                     <p>Elegí un formato</p>
                     <a href="/catalogo/descargar/pdf" download>PDF <small>Con fotos, para compartir o imprimir.</small></a>

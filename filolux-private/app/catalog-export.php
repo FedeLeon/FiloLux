@@ -107,6 +107,11 @@ function catalogExportPdf(array $products,string $file): void {
     if(!is_dir($cache) && !mkdir($cache,0700,true) && !is_dir($cache)) throw new RuntimeException('No se pudo preparar el PDF.');
     $options->set('fontCache',$cache);
     $pdf=new \Dompdf\Dompdf($options);
+    // PDF SVG rendering does not support the site's gradient; preserve its gold as a solid fill.
+    $logoSvg=str_replace('url(#gold-glint)','#c49a45',file_get_contents(PUBLIC_ROOT.'/assets/brand/logo-gold-black.svg'));
+    $logo='data:image/svg+xml;base64,'.base64_encode($logoSvg);
+    $customLogo=setting('logo');
+    if(preg_match('#^uploads/[a-zA-Z0-9_-]+\.(?:webp|jpg|jpeg|png)$#D',$customLogo) && ($jpeg=catalogExportThumbnail($customLogo))) $logo='data:image/jpeg;base64,'.base64_encode($jpeg);
     ob_start();
     try { require ROOT.'/views/catalog-pdf.php'; $html=ob_get_contents(); } finally { ob_end_clean(); }
     $pdf->loadHtml($html,'UTF-8'); $pdf->setPaper('A4'); $pdf->render();
