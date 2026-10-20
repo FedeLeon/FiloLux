@@ -6,6 +6,8 @@
         <label>Hasta<input type="date" name="hasta" value="<?= e($filters['hasta']) ?>" required></label>
         <label>Dispositivo<select name="dispositivo"><?php foreach([''=>'Todos','Celular'=>'Celular','Tablet'=>'Tablet','Escritorio'=>'Escritorio','Bot'=>'Bot / rastreador'] as $value=>$label): ?><option value="<?= e($value) ?>" <?= $filters['dispositivo']===$value?'selected':'' ?>><?= e($label) ?></option><?php endforeach ?></select></label>
         <label>IP<input name="ip" value="<?= e($filters['ip']) ?>" maxlength="45" placeholder="Todas las IP"></label>
+        <input type="hidden" name="productos" value="0">
+        <label class="check"><input type="checkbox" name="productos" value="1" <?= $filters['productos']==='1'?'checked':'' ?>>Solo visitas con productos vistos</label>
         <label class="check"><input type="checkbox" name="carrito" value="1" <?= $filters['carrito']==='1'?'checked':'' ?>>Agregaron al carrito</label>
         <button class="btn small">Filtrar</button><a href="/admin/visitas" class="text-link">Limpiar</a>
     </form>
@@ -14,7 +16,7 @@
         <div class="stat"><span>Páginas vistas</span><strong><?= (int)$summary['pages'] ?></strong><span>↗</span></div>
         <div class="stat"><span>Visitas con carrito</span><strong><?= (int)$summary['carts'] ?></strong><span>↗</span></div>
     </div>
-    <p class="microcopy">Una visita agrupa actividad hasta 30 minutos de inactividad. Se excluye al administrador conectado. Los dispositivos y bots se estiman a partir del navegador. La IP puede ser compartida por varias personas.</p>
+    <p class="microcopy">El filtro de productos vistos se aplica también a los totales y a la paginación. No garantiza excluir todos los bots. Una visita agrupa actividad hasta 30 minutos de inactividad. Se excluye al administrador conectado. Los dispositivos y bots se estiman a partir del navegador. La IP puede ser compartida por varias personas.</p>
     <form method="post" action="/admin/visitas/ubicaciones" data-visit-geolocation class="visit-location-form"><?= csrf() ?><button class="btn secondary small">Actualizar ubicaciones</button><span role="status" data-location-status>Se consultan hasta 10 IP pendientes por actualización.</span></form>
     <p class="microcopy">Ubicación aproximada por IP mediante GeoJS; puede variar con VPN y redes móviles. No es GPS ni una dirección exacta.</p>
     <?php if(!$visits): ?><div class="empty"><h2>No hay visitas para estos filtros.</h2><p>Las nuevas visitas se registran desde que se instala esta función.</p></div><?php else: ?>

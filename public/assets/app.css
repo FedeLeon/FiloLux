@@ -474,3 +474,10 @@ html[data-theme="light"] .admin-order-unread{background:#b42318}
 .catalog-download-panel a small{display:block;font-size:12px;margin-top:3px;white-space:normal}
 .catalog-download-note{display:block;margin-top:12px;font-size:12px;white-space:normal}
 @media(max-width:720px){.catalog-heading-actions{width:100%;justify-content:space-between;gap:12px}.catalog-download{margin-left:auto}.catalog-download-panel{right:0}}
+
+.admin-price-adjustment{margin-bottom:25px}
+.admin-price-adjustment>summary{list-style:none;cursor:pointer;width:fit-content}
+.admin-price-adjustment>summary::-webkit-details-marker{display:none}
+.admin-price-adjustment>.form-panel{margin-top:16px}
+.admin-price-adjustment h2{font-size:clamp(24px,3vw,34px)}
+.admin-price-adjustment .form-panel>p{max-width:800px}

@@ -31,6 +31,17 @@ if($path==='/admin') {
     $orderFilter=hasOrderDeletion()?' WHERE admin_deleted_at IS NULL':'';
     render('admin-dashboard',['title'=>'Tu taller, en un solo lugar','counts'=>['products'=>(int)query('SELECT COUNT(*) FROM products'.$productFilter)->fetchColumn(),'orders'=>(int)query('SELECT COUNT(*) FROM orders'.$orderFilter)->fetchColumn(),'pending'=>(int)query("SELECT COUNT(*) FROM orders WHERE ".(hasOrderDeletion()?'admin_deleted_at IS NULL AND ':'')."payment_status='approved' AND status IN ('pendiente','en fabricación')")->fetchColumn()],'orders'=>query('SELECT * FROM orders'.$orderFilter.' ORDER BY id DESC LIMIT 8')->fetchAll()]); return;
 }
+if($path==='/admin/productos/ajustar-precios' && $post) {
+    require_once ROOT.'/app/product-prices.php';
+    $token=$_POST['adjustment_token']??null;
+    if(!is_string($token) || !isset($_SESSION['price_adjustment_tokens'][$token])) throw new InvalidArgumentException('Este ajuste ya fue aplicado o venció. Volvé a Productos para iniciar otro.');
+    $direction=is_string($_POST['direction']??null)?$_POST['direction']:'';
+    $percent=productPriceAdjustmentPercent($_POST['percentage']??null,$direction);
+    $result=adjustAllProductPrices($percent,$direction);
+    unset($_SESSION['price_adjustment_tokens'][$token]);
+    flash('Ajuste aplicado. Se actualizaron '.$result['changed'].' de '.$result['total'].' productos con precio. Los importes se redondearon hacia arriba a múltiplos de $50.');
+    redirect('/admin/productos');
+}
 if($path==='/admin/productos') {
     $rawCategory=is_string($_GET['categoria']??null)?$_GET['categoria']:'';
     $selectedCategory=$rawCategory==='sin_categoria'?'sin_categoria':(ctype_digit($rawCategory)?max(0,(int)$rawCategory):0);
@@ -44,8 +55,12 @@ if($path==='/admin/productos') {
         array_push($args,$pattern,$pattern,$pattern);
     }
     $where=$conditions?' WHERE '.implode(' AND ',$conditions):'';
+    $adjustmentToken=bin2hex(random_bytes(32));
+    $_SESSION['price_adjustment_tokens'][$adjustmentToken]=true;
+    $_SESSION['price_adjustment_tokens']=array_slice($_SESSION['price_adjustment_tokens'],-10,null,true);
     render('admin-products',[
         'title'=>'Productos',
+        'adjustmentToken'=>$adjustmentToken,
         'products'=>query('SELECT p.*,'.productCategoryNamesSql().' AS category,(SELECT path FROM product_images WHERE product_id=p.id ORDER BY id LIMIT 1) AS image FROM products p'.$where.' ORDER BY p.id DESC LIMIT 500',$args)->fetchAll(),
         'categories'=>query('SELECT * FROM categories ORDER BY name')->fetchAll(),
         'selectedCategory'=>$selectedCategory,

@@ -1,12 +1,13 @@
 """Integration checks using only the isolated filolux_test server on :8087."""
 import json
+import os
 import re
 import subprocess
 import time
 from pathlib import Path
 import requests
 ROOT=Path(__file__).resolve().parents[1]
-BASE='http://127.0.0.1:8087'
+BASE=os.environ.get('FILOLUX_TEST_BASE','http://127.0.0.1:8087')
 HEADERS={'Accept':'application/json'}
 def sql(code):
     prefix="define('ROOT',getcwd().'/filolux-private');$GLOBALS['config']=require 'tests/.runtime/config.php';require ROOT.'/app/core.php';if($GLOBALS['config']['db']['name']!=='filolux_test')exit(1);"
@@ -71,6 +72,12 @@ assert count()==before
 listing=admin.get(BASE+'/admin/visitas');assert listing.status_code==200 and 'Visita #'+str(visit_id) in listing.text
 assert '127.0.0.1' in listing.text and 'Celular' in listing.text
 assert 'Agregó al carrito' in listing.text and 'Productos explorados' in listing.text
+other_id=data('one("SELECT id FROM site_visits WHERE id<>? ORDER BY id LIMIT 1",['+str(visit_id)+'])')['id']
+assert 'Visita #'+str(other_id) not in listing.text
+assert re.search(r'name="productos" value="1" checked',listing.text)
+assert 'Visita #'+str(other_id) in admin.get(BASE+'/admin/visitas?productos=0').text
+assert re.search(r'<span>Visitas</span><strong>1</strong>',listing.text)
+assert re.search(r'<span>Visitas</span><strong>2</strong>',admin.get(BASE+'/admin/visitas?productos=0').text)
 assert 'Visita #'+str(visit_id) in admin.get(BASE+'/admin/visitas?carrito=1').text
 assert 'Visita #'+str(visit_id) not in admin.get(BASE+'/admin/visitas?dispositivo=Escritorio').text
 assert admin.get(BASE+'/admin/visitas?desde=2026-02-31').status_code==422

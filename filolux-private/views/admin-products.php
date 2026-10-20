@@ -8,6 +8,20 @@ $adminProductLink=function(int|string $category) use ($search): string {
 ?>
 <section class="container section">
     <div class="section-heading"><div><p class="eyebrow">TU CATÁLOGO</p><h1>Productos.</h1></div><a href="/admin/productos/nuevo" class="btn">Nueva pieza +</a></div>
+    <details class="admin-price-adjustment">
+        <summary class="btn secondary small">Ajustar precios %</summary>
+        <form class="form-panel" method="post" action="/admin/productos/ajustar-precios">
+            <?= csrf() ?><input type="hidden" name="adjustment_token" value="<?= e($adjustmentToken) ?>">
+            <h2>Ajustar todos los precios</h2>
+            <p>Se aplica a todos los productos con precio, publicados y ocultos, de todas las categorías. Se excluyen los eliminados y los trabajos a consultar. Los pedidos anteriores conservan sus importes.</p>
+            <div class="form-grid">
+                <label>Operación<select name="direction" required><option value="increase">Subir precios</option><option value="decrease">Bajar precios</option></select></label>
+                <label>Porcentaje (%)<input name="percentage" inputmode="decimal" placeholder="Ej.: 10 o 12,5" maxlength="7" required pattern="[0-9]{1,4}([.,][0-9]{1,2})?"></label>
+            </div>
+            <p class="microcopy">Cada resultado se redondea hacia arriba al siguiente múltiplo de $50. Ejemplo: $1.230 + 10% = $1.400. Una baja pequeña puede dejar algunos precios iguales por el redondeo.</p>
+            <button class="btn" type="submit" data-confirm="¿Aplicar este ajuste a todos los productos con precio, incluidos los ocultos? No depende de los filtros de esta pantalla.">Aplicar a todos los precios</button>
+        </form>
+    </details>
     <nav class="category-buttons admin-product-categories" aria-label="Filtrar productos por categoría">
         <a class="category-button<?= $selectedCategory===0?' active':'' ?>" href="<?= e($adminProductLink(0)) ?>" <?= $selectedCategory===0?'aria-current="true"':'' ?>>Todas las categorías</a>
         <?php foreach($categories as $c): $selected=$selectedCategory===(int)$c['id']; ?>
