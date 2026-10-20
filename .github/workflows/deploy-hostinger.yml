@@ -27,7 +27,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: curl, fileinfo, gd, mbstring, openssl, pdo_mysql
+          extensions: curl, dom, fileinfo, gd, mbstring, openssl, pdo_mysql, simplexml, xml, xmlreader, xmlwriter, zip, zlib
           tools: composer:v2
           coverage: none
 

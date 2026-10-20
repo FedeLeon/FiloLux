@@ -52,7 +52,7 @@ for candidate in "${candidates[@]}"; do
   command -v "$candidate" > /dev/null 2>&1 || continue
   if "$candidate" -r '
     if (PHP_VERSION_ID < 80200) { fwrite(STDERR, "PHP " . PHP_VERSION . " is older than 8.2\n"); exit(1); }
-    foreach (["pdo_mysql", "curl", "openssl", "fileinfo", "gd", "mbstring"] as $extension) {
+    foreach (["pdo_mysql", "curl", "openssl", "fileinfo", "gd", "mbstring", "dom", "simplexml", "xml", "xmlreader", "xmlwriter", "zip", "zlib"] as $extension) {
       if (!extension_loaded($extension)) { fwrite(STDERR, "Missing PHP extension: $extension\n"); exit(1); }
     }
   '; then
@@ -68,7 +68,7 @@ fi
 printf 'Using PHP CLI: %s (PHP %s)\n' "$php_bin" "$("$php_bin" -r 'echo PHP_VERSION;')"
 "$php_bin" -r '
 if (PHP_VERSION_ID < 80200) { fwrite(STDERR, "PHP CLI 8.2+ required\n"); exit(1); }
-foreach (["pdo_mysql", "curl", "openssl", "fileinfo", "gd", "mbstring"] as $extension) {
+foreach (["pdo_mysql", "curl", "openssl", "fileinfo", "gd", "mbstring", "dom", "simplexml", "xml", "xmlreader", "xmlwriter", "zip", "zlib"] as $extension) {
     if (!extension_loaded($extension)) { fwrite(STDERR, "Missing PHP extension: $extension\n"); exit(1); }
 }
 $config = require $argv[1];

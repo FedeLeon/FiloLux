@@ -25,6 +25,8 @@ Confirmá la ruta absoluta real con los datos SSH de hPanel; el nombre de usuari
 
 Activá SSH en tu hosting y autorizá allí la clave pública de una clave dedicada al deploy. Guardá su clave privada **sin passphrase** como secret de GitHub, no como archivo del repositorio. El servidor necesita `bash`, `rsync`, `realpath` y PHP CLI 8.2+ con las extensiones de la aplicación. El PHP de SSH puede tener una versión diferente al PHP seleccionado para la web. El flujo busca automáticamente un CLI compatible: primero `/opt/alt/php82/usr/bin/php`, luego PHP 8.3/8.4/8.5 en la misma estructura y, finalmente, los comandos PHP disponibles. Comprueba versión y extensiones antes de sincronizar; no modifica la versión global ni la configuración de la web. Si no encuentra ninguno compatible, se detiene.
 
+Las descargas PDF y Excel requieren también las extensiones PHP `dom`, `simplexml`, `xml`, `xmlreader`, `xmlwriter`, `zip` y `zlib`, habilitadas tanto en el PHP de la web como en el CLI elegido para el deploy. Las bibliotecas se instalan en GitHub y se sincronizan dentro de `vendor/`.
+
 Si necesitás indicar otra ubicación, creá la **variable** de repositorio `HOSTINGER_PHP_BIN` en GitHub → Settings → Secrets and variables → Actions → Variables, con la ruta absoluta del ejecutable en Hostinger. Es opcional, no es un secret. Si la definís, se usa exclusivamente ese ejecutable y se valida igual.
 
 En el repositorio de **FiloLux**, abrí **Settings → Secrets and variables → Actions → New repository secret** y configurá:

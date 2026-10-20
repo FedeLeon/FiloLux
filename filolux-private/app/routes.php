@@ -8,6 +8,10 @@ if($path==='/notificaciones' && !$post) {
     session_write_close();
     jsonResponse(liveNotificationFeed($u,(int)$raw));
 }
+if(preg_match('#^/catalogo/descargar/([a-z]+)$#D',$path,$exportMatch) && $_SERVER['REQUEST_METHOD']==='GET') {
+    require ROOT.'/app/catalog-export.php';
+    downloadCatalog($exportMatch[1]); return;
+}
 require ROOT.'/app/profiles.php';
 if($path==='/cuenta/perfil') return;
 if(str_starts_with($path,'/carrito')) require ROOT.'/app/cart.php';

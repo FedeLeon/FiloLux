@@ -9,7 +9,19 @@ $catalogLink=function(array $changes=[]) use ($filters): string {
     <p class="eyebrow">PIEZAS CON IDENTIDAD</p>
     <div class="section-heading">
         <div><h1>Encontrá tu próxima idea.</h1><p>Diseñadas con intención. Fabricadas especialmente para vos.</p></div>
-        <span class="result-count" role="status"><?= $total ?> <?= $total===1?'pieza':'piezas' ?></span>
+        <div class="catalog-heading-actions">
+            <span class="result-count" role="status"><?= $total ?> <?= $total===1?'pieza':'piezas' ?></span>
+            <details class="catalog-download" data-catalog-download>
+                <summary class="btn small secondary">Descargar catálogo <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg></summary>
+                <div class="catalog-download-panel">
+                    <p>Elegí un formato</p>
+                    <a href="/catalogo/descargar/pdf" download>PDF <small>Con fotos, para compartir o imprimir.</small></a>
+                    <a href="/catalogo/descargar/xlsx" download>Excel (.xlsx) <small>Planilla con datos, fotos y enlaces.</small></a>
+                    <a href="/catalogo/descargar/csv" download>CSV <small>Para importar en otras herramientas.</small></a>
+                    <small class="catalog-download-note">Catálogo completo por categorías, sin productos repetidos.</small>
+                </div>
+            </details>
+        </div>
     </div>
     <nav class="category-buttons" aria-label="Categorías del catálogo">
         <a class="category-button<?= $filters['categoria']===0?' active':'' ?>" href="<?= e($catalogLink(['categoria'=>0])) ?>" <?= $filters['categoria']===0?'aria-current="true"':'' ?>>Todas las categorías</a>

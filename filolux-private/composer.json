@@ -10,7 +10,9 @@
         "ext-mbstring": "*",
         "ext-openssl": "*",
         "ext-pdo_mysql": "*",
-        "phpmailer/phpmailer": "^6.12"
+        "dompdf/dompdf": "^3.1",
+        "phpmailer/phpmailer": "^6.12",
+        "phpoffice/phpspreadsheet": "^5.0"
     },
     "config": {
         "sort-packages": true

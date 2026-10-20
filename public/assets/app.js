@@ -397,3 +397,15 @@ if (liveToasts) {
   window.addEventListener('pageshow', event => { if (event.persisted) { stopped = false; pollNotices(); } });
   pollNotices();
 }
+
+// Close the catalog format chooser after selecting a download or leaving it.
+(() => {
+  const menu = document.querySelector('[data-catalog-download]');
+  if (!menu) return;
+  document.addEventListener('click', event => {
+    if (!menu.contains(event.target) || event.target.closest('.catalog-download-panel a')) menu.open = false;
+  });
+  menu.addEventListener('keydown', event => {
+    if (event.key === 'Escape') { menu.open = false; menu.querySelector('summary').focus(); }
+  });
+})();
